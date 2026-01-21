@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="aaa_app_name">Next Manager</string>
+    <string name="aaa_linex_project">linex Project</string>
+    <string name="aaa_term_name">Terminal</string>
     <string name="issue_report_title">Having trouble?</string>
     <string name="issue_report_body">Encountered a bug or have feedback?</string>
     <string name="issue_report_body_2">Report it as soon as possible!</string>
