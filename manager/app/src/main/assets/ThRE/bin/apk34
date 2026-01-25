@@ -1,0 +1,60 @@
+# Line-X Project
+# 050734
+###
+
+if [ "$1" = "--h" ]; then
+echo '
+--> Dont forget "su"
+
+--> apk
+Install app from /sdcard/*.apk
+Install app from /storage/emulated/0/*.apk
+
+--> apk <path/file/*.apk>
+Install app from target path
+
+--> apk --h
+Show this message ^_^
+
+--> apk <path/file/base.apk>
+Split Installer
+- base.apk
+- config.*.apk
+'
+else
+
+echo
+enforce=0;
+get="$(getenforce)"
+echo "--> SELinux $get"
+
+[ $(getenforce) = "Enforcing" ] && {
+enforce=1;
+echo "Change SELinux to Permissive..."
+setenforce 0;
+}
+
+[ "$1" = "" ] && {
+cd /sdcard
+echo "installing /sdcard/$(ls -f *.apk | head -1)";
+pm install -d -g --bypass-low-target-sdk-block /sdcard/*.apk;
+}
+
+[ "$1" = "" ] || {
+echo "installing $1";
+pm install -d -g --bypass-low-target-sdk-block "$1";
+}
+
+[ $enforce = "1" ] && {
+echo "Restore SELinux to $get..."
+setenforce 1;
+}
+
+echo
+echo "Done!"
+echo
+
+fi
+
+# Apk Installer Rev2
+# ThRE Team

@@ -52,7 +52,7 @@
         <intent
             android:action="ACTION_VIEW"
             android:targetPackage="id.next.manager"
-            android:targetClass="id.next.manager.Terminal" />
+            android:targetClass="id.next.manager.Term" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
 </shortcuts>

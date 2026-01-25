@@ -45,7 +45,7 @@
             android:theme="@style/Theme.KernelSU.WebUI" />
 
         <activity
-            android:name="id.next.manager.Terminal"
+            android:name="id.next.manager.Term"
             android:label="@string/aaa_term_name"
             android:icon="@drawable/ic_linux"
             android:exported="true"
