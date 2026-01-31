@@ -1,0 +1,3 @@
+curl -L -O $1
+echo
+echo "done!"

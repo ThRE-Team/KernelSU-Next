@@ -507,7 +507,7 @@ private fun TopBar(
                         }
                 )
                 Text(
-                    text = stringResource(R.string.app_name),
+                    text = stringResource(R.string.aaa_app_name),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
                     color = contentColor

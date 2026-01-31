@@ -163,7 +163,7 @@ pub fn root_shell() -> Result<()> {
     }
 
     if matches.opt_present("v") {
-        println!("{}:KernelSU", defs::VERSION_NAME);
+        println!("Enjoy:KernelSU");
         return Ok(());
     }
 
