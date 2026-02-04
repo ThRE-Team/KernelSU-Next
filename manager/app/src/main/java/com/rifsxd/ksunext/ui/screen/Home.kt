@@ -884,25 +884,6 @@ private fun InfoCard(autoExpand: Boolean = false) {
                     }
                 }
 
-                if (!expanded) {
-                    Spacer(Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        IconButton(
-                            onClick = { expanded = true },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.KeyboardArrowDown,
-                                contentDescription = "Show more"
-                            )
-                        }
-                    }
-                }
-
                 AnimatedVisibility(visible = expanded) {
                     val uname = Os.uname()
                     Column {
@@ -932,6 +913,31 @@ private fun InfoCard(autoExpand: Boolean = false) {
                             label = stringResource(R.string.home_selinux_status),
                             content = getSELinuxStatus(),
                             icon = Icons.Filled.Security,
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    val rotationAngle by animateFloatAsState(
+                        targetValue = if (expanded) 180f else 0f,
+                        animationSpec = tween(durationMillis = 300)
+                    )
+                    
+                    IconButton(
+                        onClick = { expanded = !expanded },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (expanded) "Show less" else "Show more",
+                            modifier = Modifier.graphicsLayer {
+                                rotationZ = rotationAngle
+                            }
                         )
                     }
                 }
