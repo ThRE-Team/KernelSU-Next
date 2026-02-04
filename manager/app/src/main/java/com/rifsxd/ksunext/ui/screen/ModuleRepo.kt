@@ -62,6 +62,7 @@ data class ModuleRepo(
     val description: String,
     val author: String,
     val repoUrl: String,
+    val license: String = "",
     val visibility: Int = 1,
     val latestVersion: String = "",
     val downloadUrl: String = "",
@@ -158,6 +159,7 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                         description = obj.optString("description"),
                         author = obj.optString("author"),
                         repoUrl = obj.optString("repoUrl"),
+                        license = obj.optString("license", ""),
                         visibility = obj.optInt("visibility", 1)
                     )
                 }
@@ -483,9 +485,9 @@ private fun ModuleRepoCard(
                 .padding(16.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth()) {
-                if (isInstalled) {
+                if (module.license.isNotEmpty()) {
                     LabelItem(
-                        text = stringResource(R.string.installed),
+                        text = module.license,
                         style = LabelItemDefaults.style.copy(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -493,7 +495,22 @@ private fun ModuleRepoCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
+                
+                if (isInstalled) {
+                    LabelItem(
+                        text = stringResource(R.string.installed),
+                        style = LabelItemDefaults.style.copy(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    )
+                }
             }
+
+            if (module.license.isNotEmpty() || isInstalled) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth(),
