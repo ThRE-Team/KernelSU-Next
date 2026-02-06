@@ -1,0 +1,29 @@
+#!/system/bin/sh
+
+nh_bb="busybox_nh"
+ksu_bin="/data/adb/ksu/bin"
+next_bin="$FILES/bin"
+
+if [ "$1" = "install" ]; then
+cp $next_bin/busybox_nh $ksu_bin
+$ksu_bin/busybox_nh --install -s $ksu_bin && echo "busybox installed"
+else
+
+if [ "$1" = "remove" ]; then
+ls "$ksu_bin" | while read applets
+  do
+      if test "$(readlink $ksu_bin/$applets)" = "$ksu_bin/busybox_nh"
+      then
+        echo "remove $applets"
+        rm "$ksu_bin/$applets"
+      fi
+  done
+rm -f $ksu_bin/busybox_nh
+else
+busybox_nh | head -n5
+echo 'Usage:
+   bb install | install busybox
+   bb remove | remove busybox'
+fi
+
+fi

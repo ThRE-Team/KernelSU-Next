@@ -61,6 +61,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import androidx.compose.ui.res.painterResource
+import id.next.manager.Term
 
 /**
  * @author weishu
@@ -296,6 +299,32 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                             headlineContent = {
                                 Text(
                                     text = stringResource(R.string.backup_restore),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        )
+
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    val term = android.content.Intent(context.applicationContext, id.next.manager.Term::class.java).apply {
+                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(term)
+                                },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_linux),
+                                    contentDescription = null
+                                )
+                            },
+                            headlineContent = {
+                                Text(
+                                    text = stringResource(R.string.aaa_term_name),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )

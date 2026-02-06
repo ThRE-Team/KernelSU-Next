@@ -1,0 +1,7 @@
+#!/system/bin/sh
+# aria2c: wrapper to run aria2c from terminal
+# ThRE Team
+
+dir="$(cd "$(dirname "$0")"; pwd)";
+
+cat /etc/security/cacerts/* | $dir/aria2c.bin --ca-certificate=/proc/self/fd/0 "$@"

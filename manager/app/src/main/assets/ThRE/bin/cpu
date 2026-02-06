@@ -1,0 +1,43 @@
+#!/system/bin/sh
+
+cpufreq=/sys/devices/system/cpu/cpufreq
+
+cpu_info() {
+for cpu in $cpufreq/policy0 $cpufreq/policy4 $cpufreq/policy7; do
+if [ -e $cpu ]; then
+freq=$(cat $cpu/scaling_available_frequencies)
+freqMin=$(cat $cpu/scaling_min_freq)
+freqMax=$(cat $cpu/scaling_max_freq)
+sgov=$(cat $cpu/scaling_available_governors)
+gov=$(cat $cpu/scaling_governor)
+
+echo "------------------------"
+echo "$cpu"
+echo "scaling_available_frequencies: $freq"
+echo "scaling_available_governors: $sgov"
+echo "scaling_min_freq: $freqMin"
+echo "scaling_max_freq: $freqMax"
+echo "scaling_governor: $gov"
+echo "------------------------"
+fi
+done
+}
+
+[ "$1" = "" ] && {
+cpu_info
+}
+
+[ "$1" != "" ] && {
+for cpu in $cpufreq/policy0 $cpufreq/policy4 $cpufreq/policy7; do
+if [ -e $cpu ]; then
+echo $1 > $cpu/scaling_governor
+fi
+done
+sgov=$(cat $cpufreq/policy0/scaling_available_governors)
+gov=$(cat $cpufreq/policy0/scaling_governor)
+echo "scaling_available_governors: $sgov"
+echo "scaling_governor: $gov"
+}
+
+# linex Project
+# 26/02/02

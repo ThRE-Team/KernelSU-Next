@@ -79,6 +79,8 @@ sealed class ModuleRepoState {
 private const val PREFS_NAME = "module_repo_prefs"
 private const val KEY_JSON_URL = "json_url"
 private const val DEFAULT_JSON_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/modules.json"
+private const val NEXT_MANAGER_JSON_URL = "https://raw.githubusercontent.com/ThRE-Team/Next-Manager-Modules-Repo/refs/heads/main/modules.json"
+private const val MAGISK_MODULES_ALT_JSON_URL = "https://raw.githubusercontent.com/ThRE-Team/Next-Manager-Modules-Repo/refs/heads/main/Magisk-Modules-Alt-Repo.json"
 
 private fun getModuleRepoPrefs(context: Context): SharedPreferences {
     return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -258,13 +260,36 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                     )
                     
                     // Reset to default button
-                    TextButton(
-                        onClick = { 
+                    // add list
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                    TextButton(  
+                        onClick = {
                             editedUrl = DEFAULT_JSON_URL
                         },
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text("Reset to Default")
+                        Text("KernelSU-Next Default")
+                    }
+                    TextButton(
+                        onClick = { 
+                            editedUrl = NEXT_MANAGER_JSON_URL
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Next Manager Json")
+                    }
+                    TextButton(
+                        onClick = { 
+                            editedUrl = MAGISK_MODULES_ALT_JSON_URL
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Magisk Modules Alt Repo")
+                    }
                     }
                 }
             },

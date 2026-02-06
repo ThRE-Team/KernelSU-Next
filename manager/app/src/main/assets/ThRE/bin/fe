@@ -1,0 +1,26 @@
+# ThRE Team
+# 25/01/26
+
+IMP=$FILES
+EXP=/data/adb/ksu
+
+if [ "$1" = "export" ]; then
+cp -rf $IMP/bin $EXP && echo "copy \n-----\n$(ls $IMP/bin)\n-----\nto $EXP/bin"
+else
+
+if [ "$1" != "" ]; then
+cp -rf $1 $IMP && echo "copy \n-----\n$(ls $1)\n-----\nto $IMP/bin"
+chmod +x $IMP/*
+
+else
+
+echo '
+Import sc to Term/bin:
+fe <dir-bin>
+ex: fe /sdcard/bin
+
+Export to ksu/bin:
+fe export
+'
+fi
+fi
