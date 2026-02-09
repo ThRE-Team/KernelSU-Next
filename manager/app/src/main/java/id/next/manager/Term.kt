@@ -21,6 +21,11 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
 import java.io.IOException
+import android.graphics.Color
+import android.os.Build
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 
 class Term : Activity() {
 
@@ -153,14 +158,31 @@ override fun onCreate(savedInstanceState: Bundle?) {
     thre.exec("export PATH=\"/product/bin:/apex/com.android.runtime/bin:/apex/com.android.art/bin:/system_ext/bin:/system/bin:/system/xbin:/odm/bin:/vendor/bin:/vendor/xbin:/data/adb/ksu/bin:\$TBIN\"")
     thre.exec("echo 'Hey Guys (^_^)/'")
     thre.exec("date")
-    if (pwd.exists()) {
+/*  if (pwd.exists()) {
         thre.exec("rm -f $filesPath/PWD")
     }
-
+*/
     execute.setOnClickListener {
         val input = command.text?.toString() ?: ""
         val s = input.trim()
-
+        val input = command.text?.toString() ?: ""
+        val s = input.trim()
+        val deviceInfo = "┌──(${Build.DEVICE})—[$PWD]\n└─# "
+        // Creating a SpannableString object to allow setting specific text formatting
+        val spannableText = SpannableString(deviceInfo)
+        spannableText.setSpan(ForegroundColorSpan(Color.BLUE), 0, 4, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)  // "┌──("
+        spannableText.setSpan(ForegroundColorSpan(Color.RED), 4, 4 + Build.DEVICE.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        spannableText.setSpan(ForegroundColorSpan(Color.BLUE), deviceInfo.indexOf(")"), deviceInfo.indexOf(")") + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)  // ")"
+        spannableText.setSpan(ForegroundColorSpan(Color.BLUE), deviceInfo.indexOf("—["), deviceInfo.indexOf("—[") + 2, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) // "-[ ]"
+        spannableText.setSpan(ForegroundColorSpan(Color.BLUE), deviceInfo.indexOf("]"), deviceInfo.indexOf("]") + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)  // "]"
+        spannableText.setSpan(ForegroundColorSpan(Color.BLUE), deviceInfo.indexOf("└─"), deviceInfo.indexOf("└─") + 2, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)  // "└─"
+        spannableText.setSpan(ForegroundColorSpan(Color.RED), deviceInfo.indexOf("#"), deviceInfo.indexOf("#") + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)  // "#"
+        thre.exec(s)
+        output.text = "spannableText"
+        output.append("$s\n")
+        command.setText(null)
+    }
+/*
         if (pwd.exists()) {
             try {
                 BufferedReader(FileReader(pwd)).use { br ->
@@ -211,7 +233,7 @@ override fun onCreate(savedInstanceState: Bundle?) {
         }
         command.setText(null)
     }
-
+*/
     execute.setOnLongClickListener {
         FE()
         true
