@@ -452,9 +452,6 @@ private fun TopBar(
     val moduleViewModel: ModuleViewModel = viewModel()
     
     val kpatchNext = moduleViewModel.moduleList.find { it.id == "KPatch-Next" }
-    val toolkitModule = moduleViewModel.moduleList.find { it.id == "ksu_toolkit" }
-    val zygiskId = getZygiskImplementation("id")
-    val zygiskModule = moduleViewModel.moduleList.find { it.id == zygiskId }
     
     val webUILauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -467,11 +464,9 @@ private fun TopBar(
         rotationTarget += 360f * 6
     }
 
-    val shortcutKey = remember(kpatchNext, toolkitModule, zygiskModule) {
+    val shortcutKey = remember(kpatchNext) {
         listOfNotNull(
-            kpatchNext?.takeIf { it.hasWebUi }?.id,
-            toolkitModule?.takeIf { it.hasWebUi }?.id,
-            zygiskModule?.takeIf { it.hasWebUi }?.id
+            kpatchNext?.takeIf { it.hasWebUi }?.id
         ).joinToString(",")
     }
 
@@ -482,9 +477,7 @@ private fun TopBar(
         }
 
         val moduleConfigs = listOfNotNull(
-            kpatchNext?.takeIf { it.hasWebUi }?.let { it to R.drawable.ic_kpatch_next },
-            toolkitModule?.takeIf { it.hasWebUi }?.let { it to R.drawable.ic_toolkit },
-            zygiskModule?.takeIf { it.hasWebUi }?.let { it to R.drawable.ic_zygisk }
+            kpatchNext?.takeIf { it.hasWebUi }?.let { it to R.drawable.ic_kpatch_next }
         )
 
         handleDynamicShortcuts(context, moduleConfigs)
