@@ -544,6 +544,12 @@ private fun BottomBar(navController: NavHostController) {
                                         .size(itemSize)
                                         .clip(MaterialTheme.shapes.large)
                                         .clickable {
+                                            // If already on Home, do nothing to avoid duplicate opens
+                                            if (destination == BottomBarDestination.Home &&
+                                                currentRoute == HomeScreenDestination.route) {
+                                                return@clickable
+                                            }
+
                                             // Ensure Home always goes to the Home destination and
                                             // doesn't get affected by any saved/shortcut state.
                                             if (destination == BottomBarDestination.Home) {
