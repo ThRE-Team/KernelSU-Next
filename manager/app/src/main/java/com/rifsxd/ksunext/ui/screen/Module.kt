@@ -1047,11 +1047,7 @@ fun ModuleItem(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 LabelItem(
-                                    text = formatSize(module.size),
-                                    style = LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
+                                    text = formatSize(module.size)
                                 )
                                 if (module.remove) {
                                     LabelItem(
@@ -1059,24 +1055,6 @@ fun ModuleItem(
                                         style = LabelItemDefaults.style.copy(
                                             containerColor = MaterialTheme.colorScheme.errorContainer,
                                             contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                        )
-                                    )
-                                }
-                                if (module.isMetaModule && !module.remove) {
-                                    LabelItem(
-                                        text = stringResource(R.string.meta_module),
-                                        style = LabelItemDefaults.style.copy(
-                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    )
-                                }
-                                if (zygiskImpl.isNotBlank() && zygiskImpl != "None" && module.name == zygiskImpl && !module.remove) {
-                                    LabelItem(
-                                        text = stringResource(R.string.zygisk),
-                                        style = LabelItemDefaults.style.copy(
-                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                     )
                                 }
@@ -1109,13 +1087,31 @@ fun ModuleItem(
                                         )
                                     }
                                 }
+                                if (module.isMetaModule && !module.remove) {
+                                    LabelItem(
+                                        text = stringResource(R.string.meta_module),
+                                        style = LabelItemDefaults.style.copy(
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
+                                if (zygiskImpl.isNotBlank() && zygiskImpl != "None" && module.name == zygiskImpl && !module.remove) {
+                                    LabelItem(
+                                        text = stringResource(R.string.zygisk),
+                                        style = LabelItemDefaults.style.copy(
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
                                 if (module.enabled && !module.remove) {
                                     if (module.hasWebUi && filterZygiskModules) {
                                         LabelItem(
                                             text = stringResource(R.string.webui),
                                             style = LabelItemDefaults.style.copy(
-                                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                             )
                                         )
                                     }

@@ -317,12 +317,12 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
                                         text = "Update!",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = ORANGE
+                                        color = MaterialTheme.colorScheme.tertiaryContainer
                                     )
                                     2 -> Text(
                                         text = buildAnnotatedString {
                                             append(moduleUpdateCount.toString())
-                                            withStyle(SpanStyle(color = ORANGE)) {
+                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.tertiaryContainer)) {
                                                 append("*")
                                             }
                                         },
