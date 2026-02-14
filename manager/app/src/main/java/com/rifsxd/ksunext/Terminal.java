@@ -36,6 +36,7 @@ import android.util.Log;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import android.view.View.OnLongClickListener;
+import androidx.annotation.Keep;
 
 public class Terminal extends Activity {
 

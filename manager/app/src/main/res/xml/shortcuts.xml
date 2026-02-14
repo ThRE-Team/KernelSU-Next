@@ -55,4 +55,18 @@
             android:targetClass="id.next.manager.Term" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
+    
+    <!-- Shortcut 4: Test Terminal -->
+    <shortcut
+        android:shortcutId="terminal_shortcut"
+        android:enabled="true"
+        android:icon="@drawable/ic_linux"
+        android:shortcutShortLabel="@string/aaa_term_name"
+        android:shortcutLongLabel="@string/aaa_term_name">
+        <intent
+            android:action="ACTION_VIEW"
+            android:targetPackage="com.rifsxd.ksunext"
+            android:targetClass="com.rifsxd.ksunext.Terminal" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
 </shortcuts>

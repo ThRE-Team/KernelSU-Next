@@ -71,8 +71,21 @@
             android:theme="@style/Theme.KernelSU.WebUI" />
 
         <activity
-            android:name="id.next.manager.Term"
-            android:label="@string/aaa_term_name"
+            android:name=".Term"
+            android:label="Term"
+            android:icon="@drawable/ic_linux"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Settings">
+            <intent-filter>
+                <action
+                    android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity>
+        
+        
+        <activity
+            android:name=".Terminal"
+            android:label="Terminal"
             android:icon="@drawable/ic_linux"
             android:exported="true"
             android:theme="@android:style/Theme.DeviceDefault.Settings">
