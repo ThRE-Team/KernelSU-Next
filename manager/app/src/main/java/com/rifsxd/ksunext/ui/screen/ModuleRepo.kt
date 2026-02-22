@@ -78,7 +78,9 @@ sealed class ModuleRepoState {
 // SharedPreferences helper functions
 private const val PREFS_NAME = "module_repo_prefs"
 private const val KEY_JSON_URLS = "json_urls"
+private const val KEY_NON_FREE_ENABLED = "non_free_enabled"
 private const val DEFAULT_JSON_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/modules.json"
+private const val NON_FREE_JSON_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/non_free_modules.json"
 private const val URL_SEPARATOR = "|||"
 
 private fun getModuleRepoPrefs(context: Context): SharedPreferences {
@@ -97,6 +99,14 @@ private fun loadJsonUrls(context: Context): List<String> {
     } else {
         raw.split(URL_SEPARATOR).filter { it.isNotBlank() }
     }
+}
+
+private fun saveNonFreeEnabled(context: Context, enabled: Boolean) {
+    getModuleRepoPrefs(context).edit().putBoolean(KEY_NON_FREE_ENABLED, enabled).apply()
+}
+
+private fun loadNonFreeEnabled(context: Context): Boolean {
+    return getModuleRepoPrefs(context).getBoolean(KEY_NON_FREE_ENABLED, false)
 }
 
 /**
@@ -126,6 +136,7 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
 
     var jsonUrls by remember { mutableStateOf(loadJsonUrls(context)) }
+    var nonFreeEnabled by remember { mutableStateOf(loadNonFreeEnabled(context)) }
 
     // Repo manager dialog
     var showRepoManagerDialog by remember { mutableStateOf(false) }
@@ -181,8 +192,9 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
             moduleState = ModuleRepoState.Loading
 
             // Fetch all repo JSONs in parallel then merge
+            val effectiveUrls = if (nonFreeEnabled) jsonUrls + NON_FREE_JSON_URL else jsonUrls
             val allModules = withContext(Dispatchers.IO) {
-                jsonUrls.map { url -> async { fetchModuleReposFromJson(url) } }
+                effectiveUrls.map { url -> async { fetchModuleReposFromJson(url) } }
                     .awaitAll()
                     .flatten()
             }
@@ -237,16 +249,48 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
         }
     }
 
-    LaunchedEffect(jsonUrls) {
+    LaunchedEffect(jsonUrls, nonFreeEnabled) {
         scope.launch { loadModules() }
     }
 
+    // ── Repo Manager Dialog ──────────────────────────────────────────────────
     if (showRepoManagerDialog) {
         AlertDialog(
             onDismissRequest = { showRepoManagerDialog = false },
             title = { Text("Manage Repositories") },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
+                    // Non-free repo toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Non-Free Repository",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Include modules with non-free licenses",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = nonFreeEnabled,
+                            onCheckedChange = { enabled ->
+                                nonFreeEnabled = enabled
+                                saveNonFreeEnabled(context, enabled)
+                            }
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
                     if (jsonUrls.isEmpty()) {
                         Text(
                             text = "No repositories configured. Add one below.",
