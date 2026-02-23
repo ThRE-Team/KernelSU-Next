@@ -251,8 +251,8 @@ fun MetaModuleScreen(navigator: DestinationsNavigator) {
                                 modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                             }
                         },
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp + 16.dp + navBarPadding),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + navBarPadding),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(sortedModules) { module ->
                         val isInstalled = installedIds.contains(module.id)
@@ -346,7 +346,7 @@ private fun MetaModuleCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(22.dp, 18.dp, 22.dp, 12.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 if (module.license.isNotEmpty()) {
