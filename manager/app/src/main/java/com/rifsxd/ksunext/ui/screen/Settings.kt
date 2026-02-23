@@ -269,6 +269,27 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+
+                        var isSelinuxPermissive by rememberSaveable {
+                            mutableStateOf(getSelinuxEnforce() == false)
+                        }
+
+                        SwitchItem(
+                            icon = Icons.Filled.Security,
+                            title = stringResource(R.string.set_selinux),
+                            summary = stringResource(R.string.set_selinux_summary),
+                            checked = isSelinuxPermissive,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp)),
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        ) { checked ->
+                            val shouldEnforce = !checked
+                            if (setSelinuxEnforce(shouldEnforce)) {
+                                isSelinuxPermissive = !shouldEnforce
+                            }
+                        }
+
                         ListItem(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -353,8 +374,8 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
 
                     var checkUpdate by rememberSaveable {

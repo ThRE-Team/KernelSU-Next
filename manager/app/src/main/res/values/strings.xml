@@ -236,4 +236,6 @@
     <string name="module_shortcut_icon_tap_to_replace">Tap to replace</string>
     <string name="module_shortcut_icon_select_from_gallery">Select from gallery</string>
     <string name="module_shortcut_pick_icon">Pick an Icon</string>
+    <string name="set_selinux">SELinux Permissive</string>
+    <string name="set_selinux_summary">Set SELinux to permissive mode.</string>
 </resources>
