@@ -587,8 +587,6 @@ private fun TopBar(
 
     val moduleViewModel: ModuleViewModel = viewModel()
     
-    val kpatchNext = moduleViewModel.moduleList.find { it.id == "KPatch-Next" }
-    
     val webUILauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { }
@@ -598,25 +596,6 @@ private fun TopBar(
     LaunchedEffect(Unit) {
         isSpinning = true
         rotationTarget += 360f * 6
-    }
-
-    val shortcutKey = remember(kpatchNext) {
-        listOfNotNull(
-            kpatchNext?.takeIf { it.hasWebUi }?.id
-        ).joinToString(",")
-    }
-
-    LaunchedEffect(shortcutKey) {
-        if (shortcutKey.isEmpty()) {
-            ShortcutManagerCompat.removeAllDynamicShortcuts(context)
-            return@LaunchedEffect
-        }
-
-        val moduleConfigs = listOfNotNull(
-            kpatchNext?.takeIf { it.hasWebUi }?.let { it to R.drawable.ic_kpatch_next }
-        )
-
-        handleDynamicShortcuts(context, moduleConfigs)
     }
 
         TopAppBar(
@@ -631,26 +610,11 @@ private fun TopBar(
                         isSpinning = true
                         rotationTarget += 360f * 6
                     }
-
-                    if (kpatchNext != null && kpatchNext.hasWebUi) {
-                        webUILauncher.launch(
-                            Intent(context, WebUIActivity::class.java)
-                                .setData("kernelsu://webui/${kpatchNext.id}".toUri())
-                                .putExtra("id", kpatchNext.id)
-                                .putExtra("name", kpatchNext.name)
-                        )
-                    }
                 }
             ) {
-                val contentColor =
-                    if (kpatchNext != null)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        LocalContentColor.current
                 Icon(
                     painter = painterResource(R.drawable.ic_ksu_next),
                     contentDescription = null,
-                    tint = contentColor,
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .graphicsLayer {
@@ -660,8 +624,7 @@ private fun TopBar(
                 Text(
                     text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    color = contentColor
+                    fontWeight = FontWeight.Black
                 )
             }
         },
