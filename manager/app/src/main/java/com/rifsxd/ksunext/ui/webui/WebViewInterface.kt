@@ -228,9 +228,13 @@ class WebViewInterface(
     }
 
     @JavascriptInterface
-    fun createShortcut(name: String?, iconPath: String?): Boolean {
+    fun createShortcut(): Boolean {
         return try {
             val moduleId = File(modDir).name
+
+            val infoJson = JSONObject(moduleInfo())
+            val moduleName = infoJson.optString("name", moduleId)
+            val webuiIcon = infoJson.optString("webuiIcon").takeIf { it.isNotBlank() }
 
             fun resolveIcon(p: String?): String? {
                 if (p.isNullOrBlank()) return null
@@ -254,10 +258,10 @@ class WebViewInterface(
                 return p
             }
 
-            val resolved = resolveIcon(iconPath)
+            val resolved = resolveIcon(webuiIcon)
 
             Handler(Looper.getMainLooper()).post {
-                Shortcut.createModuleWebUiShortcut(context, moduleId, name ?: moduleId, resolved)
+                Shortcut.createModuleWebUiShortcut(context, moduleId, moduleName, resolved)
             }
             true
         } catch (e: Exception) {
