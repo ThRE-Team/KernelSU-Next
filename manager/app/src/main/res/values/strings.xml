@@ -241,4 +241,5 @@
     <string name="main">Main</string>
     <string name="spoofed">Spoofed</string>
     <string name="select_build_type">Select build type</string>
+    <string name="home_module_update_available">Update!</string>
 </resources>

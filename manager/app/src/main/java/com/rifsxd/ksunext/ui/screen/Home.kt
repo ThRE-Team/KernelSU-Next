@@ -39,8 +39,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -310,22 +308,18 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
                                 transitionSpec = {
                                     slideInHorizontally { -it } + fadeIn() togetherWith
                                             slideOutHorizontally { it } + fadeOut()
-                                },
-                                label = "UpdateAnimation"
+                                }
                             ) { target ->
                                 when (target) {
                                     1 -> Text(
-                                        text = "Update!",
+                                        text = stringResource(id = R.string.home_module_update_available),
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.tertiaryContainer
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                     2 -> Text(
                                         text = buildAnnotatedString {
                                             append(moduleUpdateCount.toString())
-                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.tertiaryContainer)) {
-                                                append("*")
-                                            }
+                                            append("*")
                                         },
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold
