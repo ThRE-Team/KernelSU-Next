@@ -1,0 +1,44 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : fe
+# Deskripsi   : File Exchanger (Sync Term bin <-> KSU bin)
+# Author      : ThRE Team
+# Update      : 14/02/26
+# Version     : v1.1
+# ----------------------------------------------------------
+
+IMP=$FILES/bin
+EXP=/data/adb/ksu/bin
+
+# Buat folder tujuan jika belum ada (Safe Mode)
+mkdir -p $IMP
+[ -d "/data/adb/ksu" ] && mkdir -p $EXP
+
+if [ "$1" = "export" ]; then
+    # Export dari Term ke KSU
+    cp -rf "$IMP/." "$EXP/" && \
+    echo "Exported to $EXP:\n-----\n$(ls $IMP)\n-----"
+else
+    if [ "$1" != "" ]; then
+        # Import dari folder pilihan ke Term
+        SRC_DIR="$1"
+        if [ -d "$SRC_DIR" ]; then
+            cp -rf "$SRC_DIR/." "$IMP/" && \
+            echo "Imported to $IMP:\n-----\n$(ls $IMP)\n-----"
+            chmod +x $IMP/*
+        else
+            echo "Error: Directory $SRC_DIR not found!"
+        fi
+    else
+        # Menu Help
+        echo '
+Import sc to Term/bin:
+  fe <dir-bin>
+  ex: fe /sdcard/my_bin
+
+Export to ksu/bin:
+  fe export
+        '
+    fi
+fi
+

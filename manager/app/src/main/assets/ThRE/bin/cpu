@@ -1,0 +1,65 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : cpu
+# Deskripsi   : CPU Core Monitor & Governor Tuner
+# Author      : ThRE Team
+# Update      : 14/02/26
+# Version     : v1.2 (Stable)
+# ----------------------------------------------------------
+
+CPU_ROOT="/sys/devices/system/cpu/cpufreq"
+
+show_info() {
+    echo "==============================="
+    echo "       CPU Core Monitor        "
+    echo "==============================="
+    for cpu in $CPU_ROOT/policy*; do
+        if [ -e "$cpu" ]; then
+            POLICY=$(basename "$cpu")
+            FREQ_MAX=$(cat "$cpu/scaling_max_freq")
+            GOV=$(cat "$cpu/scaling_governor")
+            FREQ_MHZ=$(expr $FREQ_MAX / 1000)
+            
+            echo "[$POLICY] Max: ${FREQ_MHZ}MHz | Gov: $GOV"
+        fi
+    done
+    echo "-------------------------------"
+    echo "USAGE:"
+    echo "  cpu                 - Show status"
+    echo "  cpu <governor>      - Set governor"
+    echo ""
+    echo "EXAMPLE:"
+    echo "  cpu performance"
+    echo "  cpu powersave"
+    echo "-------------------------------"
+    echo "Available Govs:"
+    cat $CPU_ROOT/policy0/scaling_available_governors
+    echo "==============================="
+}
+
+# Jika tidak ada argumen atau minta help
+if [ "$1" = "" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    show_info
+else
+    # Proses setting governor
+    echo "Setting Governor to: $1"
+    echo "---"
+    SUCCESS=false
+    for cpu in $CPU_ROOT/policy*; do
+        if [ -e "$cpu" ]; then
+            if grep -q "$1" "$cpu/scaling_available_governors"; then
+                echo "$1" > "$cpu/scaling_governor"
+                echo "$(basename $cpu): SUCCESS"
+                SUCCESS=true
+            else
+                echo "$(basename $cpu): FAILED (Not supported)"
+            fi
+        fi
+    done
+    
+    if [ "$SUCCESS" = true ]; then
+        echo "---"
+        echo "Current Governor: $(cat $CPU_ROOT/policy0/scaling_governor)"
+    fi
+fi
+

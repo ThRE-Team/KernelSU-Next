@@ -1,0 +1,75 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : gpu
+# Deskripsi   : GPU Monitor (Full Adreno | Lite Mali)
+# Author      : ThRE Team
+# Update      : 14/02/26
+# Version     : v1.2 (Stable)
+# ----------------------------------------------------------
+
+# Deteksi Jalur GPU
+if [ -d "/sys/class/kgsl/kgsl-3d0" ]; then
+    GPU_PATH="/sys/class/kgsl/kgsl-3d0"
+    TYPE="Adreno"
+elif [ -d "/sys/class/misc/mali0" ]; then
+    GPU_PATH="/sys/class/misc/mali0"
+    TYPE="Mali"
+else
+    echo "Error: GPU path not found!"
+    exit 1
+fi
+
+show_info() {
+    echo "==============================="
+    echo "       GPU Monitor ($TYPE)      "
+    echo "==============================="
+    
+    if [ "$TYPE" = "Adreno" ]; then
+        # Ambil data Adreno
+        CUR_FREQ=$(cat $GPU_PATH/gpuclk)
+        MAX_FREQ=$(cat $GPU_PATH/max_gpuclk)
+        GOV=$(cat $GPU_PATH/devfreq/governor)
+        CUR_MHZ=$(expr $CUR_FREQ / 1000000)
+        MAX_MHZ=$(expr $MAX_FREQ / 1000000)
+
+        echo "Current Freq : ${CUR_MHZ}MHz"
+        echo "Max Freq     : ${MAX_MHZ}MHz"
+        echo "Governor     : $GOV"
+        echo "-------------------------------"
+        echo "USAGE: gpu <governor>"
+        echo "Available Govs:"
+        cat $GPU_PATH/devfreq/available_governors
+    else
+        # Ambil data Mali (Mode Simple)
+        CUR_FREQ=$(cat $GPU_PATH/cur_freq 2>/dev/null || echo 0)
+        MAX_FREQ=$(cat $GPU_PATH/max_freq 2>/dev/null || echo 0)
+        CUR_MHZ=$(expr $CUR_FREQ / 1000)
+        MAX_MHZ=$(expr $MAX_FREQ / 1000)
+
+        echo "Current Freq : ${CUR_MHZ}MHz"
+        echo "Max Freq     : ${MAX_MHZ}MHz"
+        echo "-------------------------------"
+        echo "Status: Mali Lite Mode"
+    fi
+    echo "==============================="
+}
+
+if [ "$1" = "" ]; then
+    show_info
+else
+    # Proses set governor (Khusus Adreno)
+    if [ "$TYPE" = "Adreno" ]; then
+        GOV_FILE="$GPU_PATH/devfreq/governor"
+        AVAIL="$GPU_PATH/devfreq/available_governors"
+        
+        if grep -q "$1" "$AVAIL"; then
+            echo "$1" > "$GOV_FILE" 2>/dev/null
+            echo "Success: Governor set to $1"
+        else
+            echo "Error: Governor '$1' not supported!"
+        fi
+    else
+        echo "Error: Manual tuning not supported for Mali."
+    fi
+fi
+

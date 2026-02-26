@@ -1,0 +1,33 @@
+#!/system/bin/sh
+# cc: Cache Cleaner R4
+# Developed by: ThRE Team
+# -------------------------------------
+
+echo "Starting System Cleanup..."
+echo "--------------------------"
+
+# Target app caches in /data/data and /data/user/0
+# We use '/*/*/cache' to cover all users and packages
+for cache in /data/*/*/cache; do
+    # Check if directory exists
+    if [ -d "$cache" ]; then
+        # Check if directory is not empty to avoid useless logs
+        if [ "$(ls -A "$cache")" ]; then
+            echo "--> Cleaning: $cache"
+            # Delete contents only, keep the directory structure
+            rm -rf "$cache"/* 2>/dev/null
+            echo "Status: [OK]"
+        fi
+    fi
+done
+
+# Optional: Clean ThRE ADB temp files
+if [ -d "/data/local/tmp/thre_adb" ]; then
+    echo "--> Cleaning: ADB Temp Files"
+    rm -rf /data/local/tmp/thre_adb/*
+    echo "Status: [OK]"
+fi
+
+echo "--------------------------"
+echo "Cleanup Done! Storage Optimized."
+

@@ -87,7 +87,7 @@ sealed class ModuleRepoState {
 private const val PREFS_NAME = "module_repo_prefs"
 private const val KEY_JSON_URLS = "json_urls"
 private const val KEY_NON_FREE_ENABLED = "non_free_enabled"
-private const val DEFAULT_JSON_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/modules.json"
+private val DEFAULT_JSON_URL = listOf("https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/modules.json", "https://raw.githubusercontent.com/ThRE-Team/Next-Manager-Modules-Repo/refs/heads/main/modules.json")
 private const val NON_FREE_JSON_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/non_free_modules.json"
 private const val URL_SEPARATOR = "|||"
 
@@ -103,7 +103,7 @@ private fun saveJsonUrls(context: Context, urls: List<String>) {
 private fun loadJsonUrls(context: Context): List<String> {
     val raw = getModuleRepoPrefs(context).getString(KEY_JSON_URLS, null)
     return if (raw.isNullOrBlank()) {
-        listOf(DEFAULT_JSON_URL)
+        DEFAULT_JSON_URL
     } else {
         raw.split(URL_SEPARATOR).filter { it.isNotBlank() }
     }
@@ -365,8 +365,8 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
 
                     TextButton(
                         onClick = {
-                            jsonUrls = listOf(DEFAULT_JSON_URL)
-                            saveJsonUrls(context, listOf(DEFAULT_JSON_URL))
+                            jsonUrls = DEFAULT_JSON_URL
+                            saveJsonUrls(context, DEFAULT_JSON_URL)
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {

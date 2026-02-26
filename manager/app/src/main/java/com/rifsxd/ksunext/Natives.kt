@@ -18,7 +18,7 @@ object Natives {
     // 11071: Fix the issue of failing to set a custom SELinux type.
     // 12797: zygisk query and get manager uid.
     // 32310: new get_allow_list ioctl
-    const val MINIMAL_SUPPORTED_KERNEL = 32310
+    const val MINIMAL_SUPPORTED_KERNEL = 12345
 
     const val KERNEL_SU_DOMAIN = "u:r:su:s0"
 

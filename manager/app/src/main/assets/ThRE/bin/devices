@@ -1,0 +1,56 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : device
+# Deskripsi   : Extended Info with Accurate RAM & ZRAM
+# Author      : ThRE Team
+# Update      : 15/02/26
+# Version     : v1.4 (Stable)
+# ----------------------------------------------------------
+
+# System Properties
+BRAND=$(getprop ro.product.brand)
+MODEL=$(getprop ro.product.model)
+CODENAME=$(getprop ro.product.device)
+CHIPSET=$(getprop ro.board.platform)
+ANDROID=$(getprop ro.build.version.release)
+KERNEL=$(uname -r)
+UPTIME=$(uptime -p)
+
+show_info() {
+    # RAM Data (Available like UI)
+    RAM_TOTAL=$(free -m | awk '/Mem:/ {print $2}')
+    RAM_AVAIL=$(grep MemAvailable /proc/meminfo | awk '{print $2 / 1024}' | cut -d. -f1)
+    
+    # ZRAM Data
+    ZRAM_TOTAL=$(free -m | awk '/Swap:/ {print $2}')
+    ZRAM_USED=$(free -m | awk '/Swap:/ {print $3}')
+    
+    # Storage Data
+    ST_TOTAL=$(df -h /sdcard | awk 'NR==2 {print $2}')
+    ST_FREE=$(df -h /sdcard | awk 'NR==2 {print $4}')
+
+    echo "==========================================="
+    echo "          DEVICE INFORMATION               "
+    echo "==========================================="
+    echo "  Manufacturer  : ${BRAND}"
+    echo "  Model/Code    : $MODEL ($CODENAME)"
+    echo "  Chipset       : $CHIPSET"
+    echo "  Kernel        : $KERNEL"
+    echo "-------------------------------------------"
+    echo "  Memory (RAM)  : ${RAM_AVAIL}MB available / ${RAM_TOTAL}MB total"
+    echo "  ZRAM (Swap)   : ${ZRAM_USED}MB used / ${ZRAM_TOTAL}MB total"
+    echo "  Storage       : ${ST_FREE} free / ${ST_TOTAL} total"
+    echo "-------------------------------------------"
+    echo "  Android Ver   : $ANDROID"
+    echo "  Uptime        : ${UPTIME#up }"
+    
+    if [ $(id -u) -eq 0 ]; then
+        echo "  System Access : ROOTED (Superuser)"
+    else
+        echo "  System Access : UNROOTED"
+    fi
+    echo "==========================================="
+}
+
+show_info
+

@@ -1,0 +1,58 @@
+#!/system/bin/sh
+# BuRec v2.0: Partition Flasher
+# Optimized by: ThRE Team
+# -------------------------------------
+
+# Load config
+DEV=$(cat "$FILES/bin/DEV" 2>/dev/null)
+[ -z "$DEV" ] && DEV="/dev/block/by-name"
+
+if [ "$1" = "set" ]; then
+    if [ "$2" != "" ]; then
+        echo "$2" > "$FILES/bin/DEV"
+        echo "--> Partition Target Set to: $2"
+    else
+        echo 'BuRec v2.0 - Flash Help'
+        echo '-----------------------'
+        echo 'flash <partition>          : Flash from [partition].img in current dir'
+        echo 'flash <partition> <file>   : Flash custom file to partition'
+        echo 'flash set <block-path>     : Change partition target path'
+        echo 'Example: flash boot'
+        echo 'Example: flash recovery /sdcard/twrp.img'
+    fi
+else
+    if [ "$1" = "" ]; then
+        echo "BuRec v2.0 | Flasher"
+        echo "Target Path : $DEV"
+        echo "Current Dir : $(pwd)"
+        echo "-----------------------"
+        echo "CAUTION: Use with care!"
+    else
+        # Tentukan file sumber
+        if [ "$2" = "" ]; then
+            IMG_FILE="./$1.img"
+        else
+            IMG_FILE="$2"
+        fi
+
+        # Cek apakah file .img ada
+        if [ -f "$IMG_FILE" ]; then
+            echo "File Source : $IMG_FILE"
+            echo "Flash to    : $DEV/$1"
+            echo "---"
+            echo "WRITING... DO NOT DISCONNECT!"
+            
+            # Eksekusi DD dengan block size untuk stabilitas
+            if dd if="$IMG_FILE" of="$DEV/$1" bs=4096; then
+                echo "---"
+                echo "Status: SUCCESS!"
+            else
+                echo "---"
+                echo "Status: FAILED! (Check Root/Permissions)"
+            fi
+        else
+            echo "Error: File '$IMG_FILE' not found!"
+        fi
+    fi
+fi
+

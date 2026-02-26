@@ -3,6 +3,8 @@ package com.rifsxd.ksunext.ui.screen
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import id.next.manager.Term
 import android.content.pm.ShortcutInfo
 import android.os.Build
 import android.os.PowerManager
@@ -622,7 +624,7 @@ private fun TopBar(
                         }
                 )
                 Text(
-                    text = stringResource(R.string.app_name),
+                    text = stringResource(R.string.aaa_app_name),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black
                 )
@@ -695,19 +697,11 @@ private fun StatusCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    tapCount++
-                    if (tapCount == 5) {
-                        Toast.makeText(context, "What are you doing? 🤔", Toast.LENGTH_SHORT).show()
-                    } else if (tapCount == 10) {
-                        Toast.makeText(context, "Never gonna give you up! 💜", Toast.LENGTH_SHORT).show()
-                        val url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        if (ksuVersion != null) {
-                            context.startActivity(intent)
-                        } else {
-                            onClickInstall()
-                        }
+                    if (ksuVersion != null) {
+                        val term = android.content.Intent(context.applicationContext, id.next.manager.Term::class.java).apply {
+                          addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                          }
+                        context.startActivity(term)
                     } else if (ksuVersion == null) {
                         onClickInstall()
                     }
@@ -1043,8 +1037,8 @@ private fun InfoCard(autoExpand: Boolean = false) {
 @Composable
 fun IssueReportCard() {
     val uriHandler = LocalUriHandler.current
-    val githubIssueUrl = stringResource(R.string.issue_report_github_link)
-    val telegramUrl = stringResource(R.string.issue_report_telegram_link)
+    val githubIssueUrl = stringResource(R.string.aaa_issue_report_github_link)
+    val telegramUrl = stringResource(R.string.aaa_issue_report_telegram_link)
 
     Card {
         Row(

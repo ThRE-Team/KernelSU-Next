@@ -1,0 +1,18 @@
+#!/system/bin/sh
+# aw-off: Disable ADB via Network
+# Optimized by: ThRE Team
+# -------------------------------------
+
+echo "--> Stopping ADB WiFi services..."
+
+# Kembalikan port ke default (-1 berarti dimatikan)
+setprop service.adb.tcp.port -1
+
+# Restart daemon ADB untuk menerapkan perubahan
+stop adbd && start adbd
+
+echo ""
+echo "ADB WiFi has been disabled."
+echo "Connection is now back to USB only."
+echo "--------------------------"
+

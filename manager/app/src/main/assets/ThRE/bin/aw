@@ -1,0 +1,35 @@
+#!/system/bin/sh
+# aw: Enable ADB via Network
+# Optimized by: ThRE Team
+# -------------------------------------
+
+PORT="5555"
+
+echo "--> Starting ADB WiFi services..."
+# Set port ke 5555
+setprop service.adb.tcp.port $PORT
+
+# Restart daemon ADB
+stop adbd && start adbd
+
+echo ""
+# Cek apakah ada binary adb di folder bin kita
+dir="$(cd "$(dirname "$0")"; pwd)"
+if [ -f "$dir/adb" ]; then
+    $dir/adb devices
+else
+    adb devices
+fi
+
+# Ambil IP Address wlan0 secara otomatis
+IP=$(ip addr show wlan0 | grep "inet " | cut -d' ' -f6 | cut -d/ -f1)
+
+echo ""
+echo "To connect to this device:"
+if [ -z "$IP" ]; then
+    echo "adb connect <device-ip>:$PORT"
+else
+    echo "adb connect $IP:$PORT"
+fi
+echo "--------------------------"
+

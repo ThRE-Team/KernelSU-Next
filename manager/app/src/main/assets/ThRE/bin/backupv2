@@ -1,0 +1,54 @@
+#!/system/bin/sh
+# BuRec v2.0: Partition Backup Tool
+# Optimized by: ThRE Team
+# -------------------------------------
+
+# Load config
+DEV=$(cat "$FILES/bin/DEV" 2>/dev/null)
+[ -z "$DEV" ] && DEV="/dev/block/by-name" # Default fallback
+
+if [ "$1" = "set" ]; then
+    if [ "$2" != "" ]; then
+        echo "$2" > "$FILES/bin/DEV"
+        echo "--> Partition Source Set to: $2"
+    else
+        echo 'BuRec v2.0 - Usage Help'
+        echo '-----------------------'
+        echo 'backup <partition>          : Backup to current dir'
+        echo 'backup <partition> <path>   : Backup to custom path'
+        echo 'backup set <block-path>     : Change partition source'
+        echo 'Example: backup set /dev/block/by-name'
+    fi
+
+else
+    if [ "$1" = "" ]; then
+        echo "BuRec v2.0 | Backup Tool"
+        echo "Partition: $DEV"
+        echo "Save to  : $(pwd)"
+        echo "-----------------------"
+        echo "Type 'backup set' for help."
+    else
+        # Target folder logic
+        TARGET_DIR="./"
+        [ "$2" != "" ] && TARGET_DIR="$2"
+
+        if [ -d "$TARGET_DIR" ]; then
+            echo "Destination: $TARGET_DIR"
+            echo "Action     : Backing up [$1]..."
+            echo "---"
+            
+            # Perintah Sakti DD
+            # bs=4096 membuat proses baca lebih cepat
+            if dd if="$DEV/$1" of="$TARGET_DIR/${1}_$(date +%s).img" bs=4096; then
+                echo "---"
+                echo "Status: DONE!"
+            else
+                echo "---"
+                echo "Status: FAILED! (Check Root/Partition Name)"
+            fi
+        else
+            echo "Error: Cannot save to '$TARGET_DIR' (Directory not found)"
+        fi
+    fi
+fi
+

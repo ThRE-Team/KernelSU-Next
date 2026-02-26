@@ -1,0 +1,59 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : zram
+# Deskripsi   : zRam Resizer & Algorithm Changer
+# Author      : ThRE Team
+# Update      : 14/02/26
+# Version     : v1.0 (Stable)
+# ----------------------------------------------------------
+
+ZRAM_DEV="/dev/block/zram0"
+ZRAM_SYS="/sys/block/zram0"
+ZRAM_ALGO="/sys/block/zram0/comp_algorithm"
+
+# Cek apakah zRAM device ada
+if [ ! -e "$ZRAM_DEV" ]; then
+    echo "Error: zRAM device not found!"
+    exit 1
+fi
+
+if [ "$1" != "" ]; then
+    # Proses Resizing
+    swapoff "$ZRAM_DEV" 2>/dev/null
+    echo 1 > "$ZRAM_SYS/reset"
+
+    # Set Algoritma jika ada argumen kedua
+    if [ "$2" != "" ]; then
+        echo "$2" > "$ZRAM_ALGO" 2>/dev/null
+    fi
+
+    echo 1 > "$ZRAM_SYS/max_comp_streams"
+    chmod 644 "$ZRAM_SYS/disksize"
+    echo "$1" > "$ZRAM_SYS/disksize"
+    chmod 444 "$ZRAM_SYS/disksize"
+    
+    mkswap "$ZRAM_DEV" > /dev/null 2>&1
+    swapon "$ZRAM_DEV" > /dev/null 2>&1
+    
+    echo "==============================="
+    echo "       zRAM Updated!           "
+    echo "==============================="
+    echo "Size      : $(cat $ZRAM_SYS/disksize)"
+    echo "Algorithm : $(cat $ZRAM_ALGO)"
+    echo "==============================="
+
+else
+    # Menu Info/Help
+    echo "==============================="
+    echo "      zRam Resizer Help        "
+    echo "==============================="
+    echo "Usage: zram <size> <algorithm>"
+    echo "Example: zram 2G lz4"
+    echo "-------------------------------"
+    echo "Current Status:"
+    echo "Size      : $(cat $ZRAM_SYS/disksize)"
+    echo "Algorithm : $(cat $ZRAM_ALGO)"
+    echo "Available : $(cat $ZRAM_ALGO | tr ' ' '\n' | sed 's/\[//g;s/\]//g')"
+    echo "==============================="
+fi
+

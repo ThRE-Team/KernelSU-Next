@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="aaa_app_name">Next Manager</string>
+    <string name="aaa_linex_project">linex Project</string>
+    <string name="aaa_term_name">Terminal</string>
+    <string name="aaa_issue_report_github_link">https://github.com/ThRE-Team/KernelSU-Next/issues</string>
+    <string name="aaa_issue_report_telegram_link">https://t.me/ThRE_Team</string>
     <string name="issue_report_title">Having trouble?</string>
     <string name="issue_report_body">Encountered a bug or have feedback?</string>
     <string name="issue_report_body_2">Report it as soon as possible!</string>
@@ -37,6 +42,7 @@
     <string name="module_empty">No module installed</string>
     <string name="module">Module</string>
     <string name="module_install_prompt_with_name">The following modules will be installed: %1$s</string>
+    <string name="anykernel_flash_prompt">The following kernel zip will be flashed: %1$s</string>
     <string name="module_sort_a_to_z">Sort (A → Z)</string>
     <string name="module_sort_z_to_a">Sort (Z → A)</string>
     <string name="module_size_low_to_high">Sort (Low → High)</string>

@@ -1,0 +1,113 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : burec
+# Deskripsi   : Partition Backup & Flash Tool (Multi-Call)
+# Author      : ThRE Team
+# Update      : 14/02/26
+# Version     : v3.3
+# ----------------------------------------------------------
+
+# Load config
+DEV_CONF="$FILES/bin/DEV"
+DEV=$(cat "$DEV_CONF" 2>/dev/null)
+[ -z "$DEV" ] && DEV="/dev/block/by-name"
+
+BIN_DIR="$(cd "$(dirname "$0")"; pwd)"
+CMD=$(basename "$0")
+
+# --- FUNGSI HELP ---
+show_help() {
+    echo "==============================="
+    echo "   BuRec v3.3 - ThRE Team      "
+    echo "==============================="
+    echo "Config Path: $DEV"
+    echo ""
+    echo "USAGE:"
+    echo "  backup <partition> [path]    - Backup partition to .img"
+    echo "  flash  <partition> [file]    - Flash .img to partition"
+    echo "  burec  set <block-path>      - Change source block path"
+    echo "  burec  --install             - Create flash/backup shortcuts"
+    echo ""
+    echo "EXAMPLES:"
+    echo "  backup boot                  - Saves to ./boot_123.img"
+    echo "  backup recovery /sdcard/     - Saves to SD Card"
+    echo "  flash  boot ./my_boot.img    - Flash specific file"
+    echo "  flash  recovery              - Flash from ./recovery.img"
+    echo "==============================="
+}
+
+# --- FUNGSI INSTALLER ---
+if [ "$1" = "--install" ]; then
+    echo "--> Installing BuRec Shortcuts..."
+    ln -s ./burec "$BIN_DIR/flash" 2>/dev/null
+    ln -s ./burec "$BIN_DIR/backup" 2>/dev/null
+    chmod 777 "$BIN_DIR/flash" "$BIN_DIR/backup"
+    echo "Success! Commands 'flash' and 'backup' are ready."
+    exit 0
+fi
+
+# Cek kalau user minta help
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    show_help
+    exit 0
+fi
+
+# --- DETEKSI MULTI-CALL ---
+if [ "$CMD" = "flash" ]; then
+    ACTION="flash"; ARG1="$1"; ARG2="$2"
+elif [ "$CMD" = "backup" ]; then
+    ACTION="backup"; ARG1="$1"; ARG2="$2"
+else
+    ACTION="$1"; ARG1="$2"; ARG2="$3"
+fi
+
+# --- CORE LOGIC ---
+case "$ACTION" in
+    "set")
+        if [ "$ARG1" != "" ]; then
+            echo "$ARG1" > "$DEV_CONF"
+            echo "--> Block Path set to: $ARG1"
+        else
+            show_help
+        fi
+        ;;
+
+    "backup")
+        if [ "$ARG1" = "" ]; then
+            show_help
+        else
+            TARGET_DIR="${ARG2:-.}"
+            echo "Action : BACKUP [$ARG1]"
+            echo "Target : $TARGET_DIR"
+            dd if="$DEV/$ARG1" of="$TARGET_DIR/${ARG1}_$(date +%s).img" bs=4096 && echo "--> DONE!"
+        fi
+        ;;
+
+    "flash")
+        if [ "$ARG1" = "" ]; then
+            show_help
+        else
+            IMG_FILE="${ARG2:-./$ARG1.img}"
+            if [ -f "$IMG_FILE" ]; then
+                echo "Action : FLASH [$ARG1]"
+                echo "Source : $IMG_FILE"
+                echo "WARNING: Writing to partition..."
+                dd if="$IMG_FILE" of="$DEV/$ARG1" bs=4096 && echo "--> SUCCESS!"
+            else
+                echo "Error: File '$IMG_FILE' not found!"
+            fi
+        fi
+        ;;
+    "list")
+        echo "--> Available Partitions in $DEV:"
+        echo "-------------------------------------"
+        ls -1 "$DEV" | column -c 80 2>/dev/null || ls -1 "$DEV"
+        echo "-------------------------------------"
+        ;;
+
+
+    *)
+        show_help
+        ;;
+esac
+

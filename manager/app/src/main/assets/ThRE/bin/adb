@@ -1,0 +1,30 @@
+#!/system/bin/sh
+# adb: wrapper to run adb from terminal
+# Original by: osm0sis @ xda-developers
+# Optimized by: ThRE Team
+# -------------------------------------
+
+# Get current script directory
+dir="$(cd "$(dirname "$0")"; pwd)"
+
+# Define temp path (fallback to internal files if $FILES is empty)
+if [ -z "$FILES" ]; then
+    pub="/data/local/tmp"
+else
+    pub="$FILES/tmp"
+fi
+
+# Prepare environment
+mkdir -p "$pub"
+chmod 777 "$pub"
+export HOME="$pub"
+export TMPDIR="$pub"
+
+# Check if binary exists before running
+if [ -f "$dir/adb.bin" ]; then
+    exec "$dir/adb.bin" "$@"
+else
+    echo "Error: adb.bin not found in $dir"
+    exit 1
+fi
+

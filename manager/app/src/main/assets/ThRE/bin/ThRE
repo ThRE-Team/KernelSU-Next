@@ -1,0 +1,181 @@
+# linex Project
+# NH Installer
+# cd $(dirname $0)
+
+nh_zip="../kali-nethunter-*.zip"
+nh_xz="kalifs-*.tar.xz"
+nh_bb="busybox_nh"
+ksu_bin="/data/adb/ksu/bin"
+bb="$adb/busybox_nh"
+tmp="/data/local/tmp/thre"
+temp="/data/local/tmp"
+mkdir -p $tmp
+NHSYS="/data/local/nhsystem"
+mkdir -p $NHSYS
+KALIFS="kalifs.tar.xz"
+nh_app="data/app"
+
+# deteksi file jika pakai Term
+if [ ! -z "$1" ]; then
+    nh_zip="$1"
+else
+    nh_zip="../kali-nethunter-*.zip"
+fi
+
+ok() {
+echo "done! $(date)"
+}
+error() {
+echo "hmm"
+}
+noFileZIP() {
+echo "$nh_zip not found!"
+exit
+}
+noFileXZ() {
+echo "$nh_xz not found!"
+exit
+}
+noFileBB() {
+echo "$nh_bb not found!"
+exit
+}
+
+installBB() {
+cp $nh_bb $ksu_bin
+chmod +x $ksu_binbusybox_nh
+$adb/busybox_nh --install -s $ksu_bin
+}
+
+install_busybox_for() {
+cp $nh_bb /data/adb/$1/bin
+chmod +x /data/adb/$1/bin/busybox_nh
+/data/adb/$1/bin/busybox_nh --install -s /data/adb/$1/bin
+}
+
+install_busybox() {
+if [ -f $nh_zip ]; then
+rm -rf $tmp/busybox*
+unzip -d $tmp -o $nh_zip -j tools/busybox_nh*
+cd $tmp
+busybox_nh=$( (ls busybox_nh-*) | tail -n 1 )
+  print "  Setting $busybox_nh as default"
+  cp $busybox_nh busybox_nh
+  chmod +x busybox_nh
+  cp busybox_nh $ksu_bin
+  $ksu_bin/busybox_nh --install -s $ksu_bin
+rm -rf $tmp/busybox*
+ok
+else
+noFileZIP
+fi
+}
+
+unzip_nh_file() {
+if [ -f $nh_zip ]; then
+rm -rf $tmp/*.xz
+unzip -d $tmp -o $nh_zip -j $nh_xz
+cd $tmp
+mv *tar.xz $KALIFS
+else
+noFileZIP
+fi
+}
+
+install_kalifs() {
+if [ ! -d $NHSYS/kali-arm64 ]; then
+unzip_nh_file
+echo "installing kalifs...."
+cd $tmp
+tar -xJf "$KALIFS" -C "$NHSYS" && ok
+mv $NHSYS/kali-arm64 $NHSYS/kali-arm64-$(date +%s)
+rm -rf $tmp/*.xz
+else
+echo
+echo "CANCEL PROCESS!!!"
+echo "found $NHSYS/kali-arm64"
+fi
+}
+
+extract_nethunter_app() {
+if [ -f $nh_zip ]; then
+unzip -d $temp -o $nh_zip -j $nh_app/NetHunter.apk $nh_app/NetHunterTerminal.apk $nh_app/NetHunterStorePrivilegedExtension.apk $nh_app/NetHunterKeX.apk $nh_app/NetHunterStore.apk
+else
+noFileZIP
+fi
+}
+
+clear_temp() {
+cd $temp
+rm -rf NetHunter.apk NetHunterTerminal.apk NetHunterStorePrivilegedExtension.apk NetHunterKeX.apk NetHunterStore.apk && ok
+}
+
+install_apk() {
+    local SOURCE="$1"
+    [ -z "$SOURCE" ] && return
+    
+    local EXT="${SOURCE##*.}"
+    local TMP_DIR="/data/local/tmp/thre_installer"
+    
+    echo ""
+    echo "--> Installing: $(basename "$SOURCE")"
+    
+    # Matikan SELinux sementara
+    [ "$(getenforce)" = "Enforcing" ] && { setenforce 0; local EF=1; }
+
+    # Persiapkan folder netral agar tidak error "Failed to parse"
+    rm -rf "$TMP_DIR" && mkdir -p "$TMP_DIR"
+    
+    if [[ "$EXT" == "apks" ]] || [[ "$EXT" == "xapk" ]] || [[ "$EXT" == "apkm" ]] || [[ "$EXT" == "zip" ]]; then
+        echo "--> Extracting package..."
+        unzip -o "$SOURCE" -d "$TMP_DIR" > /dev/null
+        chmod -R 777 "$TMP_DIR"
+
+        # Cek data OBB
+        [ -d "$TMP_DIR/Android/obb" ] && cp -rf "$TMP_DIR/Android/obb/." "/sdcard/Android/obb/"
+
+        # Gunakan Combined Install (Solusi Unknown command: install-multiple)
+        pm install -d -g $SDK_FLAG "$TMP_DIR"/*.apk
+    else
+        # APK Standar: Salin ke tmp dulu agar aman dari sandbox
+        cp "$SOURCE" "$TMP_DIR/temp.apk"
+        chmod 777 "$TMP_DIR/temp.apk"
+        pm install -d -g $SDK_FLAG "$TMP_DIR/temp.apk"
+    fi
+
+    # Bersihkan dan kembalikan SELinux
+    rm -rf "$TMP_DIR"
+    [ "$EF" = "1" ] && setenforce 1
+    ok
+}
+
+install_app() {
+echo
+cd $temp
+setenforce 0
+echo "install $1...."
+pm install -d -g $1
+}
+
+install_app_sdk34() {
+echo
+cd $temp
+setenforce 0
+echo "install $1...."
+pm install -d -g --bypass-low-target-sdk-block $1
+}
+
+remove_busybox() {
+ls "$ksu_bin" | while read applets
+  do
+      if test "$(readlink $ksu_bin/$applets)" = "$ksu_bin/busybox_nh"
+      then
+        echo "remove $applets"
+        rm "$ksu_bin/$applets"
+      fi
+  done
+rm -f $ksu_bin/busybox_nh && ok
+}
+
+# ThRE Team
+# 2025/12/26

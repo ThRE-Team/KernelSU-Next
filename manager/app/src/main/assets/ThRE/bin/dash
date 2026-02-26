@@ -1,0 +1,48 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : dash
+# Deskripsi   : All-in-One System Dashboard
+# Author      : ThRE Team
+# Update      : 15/02/26
+# Version     : v1.0 (Stable)
+# ----------------------------------------------------------
+
+echo "==========================================="
+echo "       SYSTEM DASHBOARD        "
+echo "==========================================="
+
+# 1. Info Device Singkat
+MODEL=$(getprop ro.product.model)
+ANDROID=$(getprop ro.build.version.release)
+UPTIME=$(uptime -p)
+echo "Device  : $MODEL (Android $ANDROID)"
+echo "Uptime  : ${UPTIME#up }"
+echo "-------------------------------------------"
+
+# 2. Status Baterai (panggil btemp)
+if command -v btemp >/dev/null; then
+    TEMP=$(expr $(cat /sys/class/power_supply/battery/temp) / 10)
+    LEVEL=$(cat /sys/class/power_supply/battery/capacity)
+    HEALTH=$(cat /sys/class/power_supply/battery/health)
+    echo "Battery : $LEVEL% | $HEALTH | ${TEMP}°C"
+else
+    echo "Battery : btemp script not found"
+fi
+
+# 3. Status CPU & GPU (Simple version)
+echo "-------------------------------------------"
+if [ -d "/sys/devices/system/cpu/cpufreq/policy0" ]; then
+    CPU_GOV=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor)
+    echo "CPU Gov : $CPU_GOV"
+fi
+
+if [ -d "/sys/class/kgsl/kgsl-3d0" ]; then
+    GPU_GOV=$(cat /sys/class/kgsl/kgsl-3d0/devfreq/governor)
+    GPU_CLK=$(expr $(cat /sys/class/kgsl/kgsl-3d0/gpuclk) / 1000000)
+    echo "GPU Gov : $GPU_GOV (@${GPU_CLK}MHz)"
+fi
+
+echo "==========================================="
+echo "  Type 'cpu', 'gpu', or 'btemp' for detail"
+echo "==========================================="
+

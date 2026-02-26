@@ -1,0 +1,52 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Nama Script : btemp
+# Deskripsi   : Ultimate Battery & Thermal Monitor
+# Author      : ThRE Team
+# Update      : 15/02/26
+# Version     : v1.3 (Stable)
+# ----------------------------------------------------------
+
+BATT_PATH="/sys/class/power_supply/battery"
+
+show_info() {
+    # Raw Data Collection
+    TEMP_RAW=$(cat $BATT_PATH/temp)
+    LEVEL=$(cat $BATT_PATH/capacity)
+    STATUS=$(cat $BATT_PATH/status)
+    HEALTH=$(cat $BATT_PATH/health)
+    VOLT_RAW=$(cat $BATT_PATH/voltage_now)
+    # Check Power Source
+    [ "$(cat /sys/class/power_supply/usb/online)" = "1" ] && SOURCE="USB/AC" || SOURCE="Battery"
+
+    # Conversions
+    TEMP=$(expr $TEMP_RAW / 10)
+    VOLT=$(expr $VOLT_RAW / 1000)
+
+    echo "==============================="
+    echo "    Battery & Thermal Safety   "
+    echo "==============================="
+    echo "Level/Health : $LEVEL% / $HEALTH"
+    echo "Status/Src   : $STATUS / $SOURCE"
+    echo "Voltage      : ${VOLT}mV"
+    echo "Temperature  : ${TEMP}°C"
+    
+    # Thermal Svc Check (Compact)
+    ps -ef | grep -v grep | grep -q "thermal-engine" && \
+    echo "Thermal Svc  : ACTIVE" || echo "Thermal Svc  : INACTIVE"
+    
+    echo "-------------------------------"
+    
+    # Final Safety Condition
+    if [ $TEMP -ge 45 ]; then
+        echo "ALERT  : OVERHEAT! (Slow down)"
+    elif [ $TEMP -ge 40 ]; then
+        echo "STATUS : WARM (Fair)"
+    else
+        echo "STATUS : COOL (Stable)"
+    fi
+    echo "==============================="
+}
+
+show_info
+

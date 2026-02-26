@@ -1,3 +1,8 @@
+#include <errno.h>
+#include <utility>
+#define KSU_IOCTL_GET_VERSION 0x40046b00
+struct ksu_get_info_cmd;
+std::pair<int, int> legacy_get_info();
 //
 // Created by weishu on 2022/12/9.
 //
@@ -16,6 +21,8 @@
 #include <climits>
 #include <sys/syscall.h>
 #include "ksu.h"
+static bool g_use_legacy = false;
+static bool g_legacy_detected = false;
 
 static int fd = -1;
 
@@ -74,9 +81,23 @@ static int ksuctl(unsigned long op, Args &&... args) {
     return ioctl(fd, op, std::forward<Args>(args)...);
 }
 
+static void detect_ksu_status() {
+    if (g_legacy_detected) return;
+    g_legacy_detected = true;
+    struct { int version; } verCmd;
+    if (ksuctl(KSU_IOCTL_GET_VERSION, &verCmd) == 0) {
+        if (verCmd.version < 22000) g_use_legacy = true;
+    } else {
+        g_use_legacy = true;
+    }
+}
+
 static struct ksu_get_info_cmd g_version {};
 
 struct ksu_get_info_cmd get_info() {
+    detect_ksu_status(); 
+    if (!g_version.version) ksuctl(KSU_IOCTL_GET_INFO, &g_version); 
+    if (g_use_legacy) { g_version.flags |= 0x3; return g_version; }
     if (!g_version.version) {
         ksuctl(KSU_IOCTL_GET_INFO, &g_version);
     }
@@ -142,6 +163,7 @@ bool set_su_enabled(bool enabled) {
 }
 
 bool is_su_enabled() {
+    detect_ksu_status(); if (g_use_legacy) return true;
     struct ksu_get_feature_cmd cmd = {};
     cmd.feature_id = KSU_FEATURE_SU_COMPAT;
     if (ksuctl(KSU_IOCTL_GET_FEATURE, &cmd) != 0) {
@@ -195,6 +217,7 @@ bool set_kernel_umount_enabled(bool enabled) {
 }
 
 bool is_kernel_umount_enabled() {
+    if (g_use_legacy) return false;
     uint64_t value = 0;
     bool supported = false;
     if (!get_feature(KSU_FEATURE_KERNEL_UMOUNT, &value, &supported)) {

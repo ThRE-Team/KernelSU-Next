@@ -1,0 +1,103 @@
+#!/system/bin/sh
+# ----------------------------------------------------------
+# Script Name : apk (Universal Installer)
+# Author      : ThRE Team
+# Update      : 25/02/26
+# Version     : v1.5
+# Support     : APK, APKS, APKM, XAPK, ZIP, TAR + OBB Auto-Move
+# ----------------------------------------------------------
+
+[ $(getprop ro.build.version.sdk) -ge 34 ] && SDK_FLAG="--bypass-low-target-sdk-block"
+
+install_logic() {
+    local TARGET="$1"
+    local EXT=$(echo "${TARGET##*.}" | xargs | tr '[:upper:]' '[:lower:]')
+    local TMP_DIR="/data/local/tmp/thre_installer"
+    
+    echo "--> Processing: $(basename "$TARGET")"
+    rm -rf "$TMP_DIR"
+    mkdir -p "$TMP_DIR" || { echo "Error: Cannot create temp dir!"; return 1; }
+   
+    if [[ "$EXT" == "apks" ]] || [[ "$EXT" == "xapk" ]] || [[ "$EXT" == "apkm" ]] || [[ "$EXT" == "zip" ]] || [[ "$EXT" == "tar" ]]; then
+        echo "--> Format Detected: $EXT (Extracting...)"
+        if [[ "$EXT" == "tar" ]]; then
+            tar -xf "$TARGET" -C "$TMP_DIR"
+        else
+            unzip -o "$TARGET" "*.apk" "Android/obb/*" -d "$TMP_DIR" > /dev/null 2>&1
+        fi
+        chmod -R 777 "$TMP_DIR"
+
+        if [ -d "$TMP_DIR/Android/obb" ]; then
+            echo "--> OBB data detected. Moving to storage..."
+            cp -rf "$TMP_DIR/Android/obb/." "/sdcard/Android/obb/"
+        fi
+
+        COUNT=$(ls "$TMP_DIR"/*.apk 2>/dev/null | wc -l)
+        BASE_FILE=$(ls "$TMP_DIR" | grep "base.apk")
+        
+        if [ "$COUNT" -gt 1 ]; then
+            echo "--> Multiple APKs detected..."
+            if [ -n "$BASE_FILE" ]; then
+                echo "--> Found base.apk, Installing as Split APK..."
+                pm install -d -g $SDK_FLAG "$TMP_DIR"/*.apk
+            else
+                echo "--> No base.apk found. Installing all apps one by one..."
+                for f in "$TMP_DIR"/*.apk ; do
+                    [ -e "$f" ] || continue
+                    echo "--> Installing: $(basename "$f")"
+                    pm install -d -g $SDK_FLAG "$f"
+                done
+            fi
+        elif [ "$COUNT" -eq 1 ]; then
+            echo "--> Installing Single Extracted APK..."
+            pm install -d -g $SDK_FLAG "$TMP_DIR"/*.apk
+        else
+            echo "--> No APK files found in package!"
+        fi
+    
+    else
+        echo "--> Installing Standard APK..."
+        cp "$TARGET" "$TMP_DIR/"
+        pm install -d -g $SDK_FLAG "$TMP_DIR"/*.apk
+    fi
+    rm -rf "$TMP_DIR"
+}
+
+# --- Main Logic (SELinux & Execution) ---
+enforce=0
+get="$(getenforce)"
+[ "$get" = "Enforcing" ] && { enforce=1; setenforce 0; }
+
+if [ "$1" = "" ]; then
+    echo "==========================================="
+    echo "       Universal App Installer v1.4       "
+    echo "==========================================="
+    echo "Usage:"
+    echo "  apk <path_file>    - Install APK/APKS/APKM/XAPK"
+    echo "  apk <folder>       - Install all apps in folder"
+    echo "  apk .              - Install file in current dir"
+    echo ""
+    echo "Support: .apk, .apks, .apkm, .zip, .xapk, .tar (with OBB)"
+    echo "==========================================="
+else
+    if [ "$1" = "." ]; then
+        FILE=$(ls ./*.apk ./*.apks ./*.apkm ./*.xapk 2>/dev/null | head -1)
+        if [ -n "$FILE" ]; then
+            install_logic "$FILE"
+        else
+            echo "Error: No APK/APKS/APKM/XAPK found in $(pwd)"
+        fi
+    elif [ -d "$1" ]; then
+        echo "--> Folder detected. Preparing batch installation..."
+        for f in "$1"/*.apk "$1"/*.apks "$1"/*.apkm "$1"/*.xapk "$1"/*.zip "$1"/*.tar; do
+            [ -e "$f" ] || continue
+            install_logic "$f"
+        done
+    elif [ -f "$1" ]; then
+        install_logic "$1"
+    else
+        echo "Error: '$1' is not a valid file or directory!"
+    fi
+fi
+
+[ "$enforce" = "1" ] && setenforce 1

@@ -1,4 +1,5 @@
 @file:Suppress("UnstableApiUsage")
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import com.android.build.gradle.tasks.PackageAndroidArtifact
@@ -40,8 +41,11 @@ android {
         prefab = true
     }
 
-    kotlinOptions {
-        jvmTarget = "21"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            javaParameters.set(true)
+        }
     }
 
     packaging {
@@ -68,7 +72,7 @@ android {
     applicationVariants.all {
         outputs.forEach {
             val output = it as BaseVariantOutputImpl
-            output.outputFileName = "KernelSU_Next_${managerVersionName}_${managerVersionCode}-$name.apk"
+            output.outputFileName = "Next_Manager_${managerVersionName}_${managerVersionCode}-$name.apk"
         }
         kotlin.sourceSets {
             getByName(name) {
