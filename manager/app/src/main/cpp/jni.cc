@@ -48,28 +48,17 @@ Java_com_rifsxd_ksunext_Natives_getVersionTag(JNIEnv *env, jobject) {
     return env->NewStringUTF(tag);
 }
 
-// deprecated
-// extern "C"
-// JNIEXPORT jintArray JNICALL
-// Java_com_rifsxd_ksunext_Natives_getAllowList(JNIEnv *env, jobject) {
-//     struct ksu_get_allow_list_cmd cmd = {};
-//     bool result = get_allow_list(&cmd);
-//     if (result) {
-//         auto array = env->NewIntArray(cmd.count);
-//         env->SetIntArrayRegion(array, 0, cmd.count, reinterpret_cast<const jint *>(cmd.uids));
-//         return array;
-//     }
-//     return env->NewIntArray(0);
-// }
-
 extern "C"
-JNIEXPORT jint JNICALL
-Java_com_rifsxd_ksunext_Natives_getSuperuserCount(JNIEnv *env, jobject) {
-    struct ksu_new_get_allow_list_cmd cmd = {
-        .count = 0
-    };
+JNIEXPORT jintArray JNICALL
+Java_com_rifsxd_ksunext_Natives_getAllowList(JNIEnv *env, jobject) {
+    struct ksu_get_allow_list_cmd cmd = {};
     bool result = get_allow_list(&cmd);
-    return result ? cmd.total_count : 0;
+    if (result) {
+        auto array = env->NewIntArray(cmd.count);
+        env->SetIntArrayRegion(array, 0, cmd.count, reinterpret_cast<const jint *>(cmd.uids));
+        return array;
+    }
+    return env->NewIntArray(0);
 }
 
 extern "C"

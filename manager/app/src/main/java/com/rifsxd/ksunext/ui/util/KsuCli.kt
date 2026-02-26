@@ -134,7 +134,7 @@ fun getModuleCount(): Int {
 }
 
 fun getSuperuserCount(): Int {
-    return Natives.getSuperuserCount()
+    return Natives.allowList.size
 }
 
 fun toggleModule(id: String, enable: Boolean): Boolean {
