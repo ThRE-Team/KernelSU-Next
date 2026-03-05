@@ -43,19 +43,19 @@ $(shell cd $(GIT_ROOT) && [ -f .git/shallow ] && $(LPATH) git fetch --unshallow 
 KSU_GIT_VERSION := $(shell cd $(GIT_ROOT) && $(LPATH) git rev-list --count HEAD 2>/dev/null)
 KSU_GIT_TAG := $(shell cd $(GIT_ROOT) && $(LPATH) git describe --tags --abbrev=0 2>/dev/null)
 KSU_GIT_VERSION_VALID := 1
-$(info -- KernelSU-Next Git repo detected at: $(GIT_ROOT))
+$(info -- Next Git repo detected at: $(GIT_ROOT))
 endif
 endif
 
 # Calculate version if git version is available
 ifdef KSU_GIT_VERSION_VALID
 # ksu_version: major * 30000 + git version for historical reasons
-$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 45))
+$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 49))
 $(info -- Next version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else
 # If there is no .git directory, use default version
-$(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU-Next a git repository!")
+$(warning "KSU_GIT_VERSION not defined! It is better to make Next a git repository!")
 KSU_VERSION_FALLBACK := 1
 $(info -- Next version fallback: $(KSU_VERSION_FALLBACK))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION_FALLBACK)
@@ -66,7 +66,7 @@ $(eval KSU_VERSION_TAG=$(KSU_GIT_TAG))
 $(info -- Next tag: $(KSU_VERSION_TAG))
 ccflags-y += -DKSU_VERSION_TAG=\"$(KSU_VERSION_TAG)\"
 else
-$(warning "KSU_VERSION_TAG not defined! It is better to make KernelSU-Next a git submodule!")
+$(warning "KSU_VERSION_TAG not defined! It is better to make Next a git submodule!")
 KSU_VERSION_TAG_FALLBACK := v0.0.1
 $(info -- Next tag fallback: $(KSU_VERSION_TAG_FALLBACK))
 ccflags-y += -DKSU_VERSION_TAG=\"$(KSU_VERSION_TAG_FALLBACK)\"
@@ -82,7 +82,7 @@ endif
 
 ifdef KSU_MANAGER_PACKAGE
 ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
-$(info -- KernelSU-Next Manager package name: $(KSU_MANAGER_PACKAGE))
+$(info -- Next Manager package name: $(KSU_MANAGER_PACKAGE))
 endif
 
 $(info -- Next Manager signature size: 0x31c)
@@ -94,7 +94,7 @@ HAVE_KSU_HOOK ?= 1
 
 # Checks hooks state
 ifeq ($(CONFIG_KSU_KPROBES_HOOK), y)
-$(info -- KernelSU-Next: Hook mode: Kprobes)
+$(info -- Next: Hook mode: Kprobes)
 ccflags-y += -DKSU_KPROBES_HOOK
 # Let's make it 0, so it would pass.
 HAVE_KSU_HOOK := 0
@@ -103,12 +103,12 @@ endif
 ifeq ($(CONFIG_KSU_MANUAL_HOOK), y)
 HAVE_KSU_HOOK := $(shell grep -q "ksu_handle_sys_reboot" $(srctree)/kernel/reboot.c && echo 0 || echo 1)
 ifeq ($(HAVE_KSU_HOOK),0)
-$(info -- KernelSU-Next: Hook mode: Manual)
+$(info -- Next: Hook mode: Manual)
 endif
 endif
 
 ifneq ($(HAVE_KSU_HOOK),0)
-$(error -- KernelSU-Next: No hooks were defined, please integrate manual hooks in your kernel!)
+$(error -- Next: No hooks were defined, please integrate manual hooks in your kernel!)
 endif
 
 # some backports
