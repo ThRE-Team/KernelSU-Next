@@ -187,6 +187,16 @@ module_init(kernelsu_init);
 #endif
 module_exit(kernelsu_exit);
 
+bool is_ksu_transition(struct task_struct *p, const struct cred *new, const struct cred *old)
+{
+	if (ksu_cred && (new == ksu_cred)) {
+		return true;
+	}
+	return false;
+}
+EXPORT_SYMBOL_GPL(is_ksu_transition);
+
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("weishu");
 MODULE_DESCRIPTION("Android KernelSU");

@@ -28,5 +28,5 @@ static inline int endswith(const char *s, const char *t)
 
 extern struct cred* ksu_cred;
 extern bool ksu_late_loaded;
-
+bool is_ksu_transition(struct task_struct *p, const struct cred *new, const struct cred *old);
 #endif
