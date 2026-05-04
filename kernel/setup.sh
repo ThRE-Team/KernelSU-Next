@@ -45,7 +45,7 @@ setup_kernelsu() {
     cd "$GKI_ROOT/$REPO"
     git stash && echo "[-] Stashed current changes."
 
-    BRANCH="$(git rev-parse --abbrev-ref origin/HEAD | sed 's@^origin/@@')"
+    BRANCH="$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null | sed 's@^origin/@@')"
     if [ "$(git status | grep -Po 'v\d+(\.\d+)*' | head -n1)" ]; then
         git checkout $BRANCH && echo "[-] Switched to $BRANCH branch."
     fi
