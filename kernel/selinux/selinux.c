@@ -270,7 +270,12 @@ static void initialize_fake_status(void)
 	if (fake_status) /* double-check after lock */
 		goto out;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+	struct page *real_page = selinux_kernel_status_page(&selinux_state);
+#else
 	struct page *real_page = selinux_kernel_status_page();
+#endif
+
 	if (!real_page) {
 		pr_warn("ksu_selinux_hide: status_page not exist\n");
 		goto out;
