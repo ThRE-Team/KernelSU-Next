@@ -1,11 +1,6 @@
 #ifndef __MANAGER_LIST_H
 #define __MANAGER_LIST_H
 
-/* Next-Manager
- * Team: ThRE Team
- * Deskripsi: Daftar manager yang didukung oleh kernel.
- */
-
 struct manager_identity {
     const char *package_name;
     const char *hash;
