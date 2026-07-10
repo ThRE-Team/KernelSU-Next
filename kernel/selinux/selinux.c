@@ -9,22 +9,22 @@
 
 /*
  * Cached SID values for frequently checked contexts.
- * These are resolved once at init and used for fast u32 comparison
- * instead of expensive string operations on every check.
- *
- * A value of 0 means "no cached SID is available" for that context.
- * This covers both the initial "not yet cached" state and any case
- * where resolving the SID (e.g. via security_secctx_to_secid) failed.
- * In all such cases we intentionally fall back to the slower
- * string-based comparison path; this degrades performance only and
- * does not cause a functional failure.
  */
 static u32 cached_su_sid __read_mostly = 0;
 static u32 cached_zygote_sid __read_mostly = 0;
 static u32 cached_init_sid __read_mostly = 0;
 u32 ksu_file_sid __read_mostly = 0;
 
-static int transive_to_domain(const char *domain, struct cred *cred)
+#ifdef CONFIG_KSU_SUSFS
+#define KERNEL_PRIV_APP_DOMAIN "u:r:priv_app:s0:c512,c768"
+
+u32 susfs_ksu_sid = 0;
+u32 susfs_init_sid = 0;
+u32 susfs_zygote_sid = 0;
+u32 susfs_priv_app_sid = 0;
+#endif
+
+static int transive_to_domain(const char *domain, struct cred *cred, bool clear_exec_sid)
 {
     struct task_security_struct *tsec;
     u32 sid;
@@ -43,6 +43,9 @@ static int transive_to_domain(const char *domain, struct cred *cred)
     }
     if (!error) {
         tsec->sid = sid;
+        if (clear_exec_sid) {
+            tsec->exec_sid = 0;
+        }
         tsec->create_sid = 0;
         tsec->keycreate_sid = 0;
         tsec->sockcreate_sid = 0;
@@ -75,7 +78,7 @@ is_ksu_transition(const struct task_security_struct *old_tsec,
 
 void setup_selinux(const char *domain, struct cred *cred)
 {
-    if (transive_to_domain(domain, cred)) {
+    if (transive_to_domain(domain, cred, false)) {
         pr_err("transive domain failed.\n");
         return;
     }
@@ -83,7 +86,7 @@ void setup_selinux(const char *domain, struct cred *cred)
 
 void setup_ksu_cred(void)
 {
-    if (ksu_cred && transive_to_domain(KERNEL_SU_CONTEXT, ksu_cred)) {
+    if (ksu_cred && transive_to_domain(KERNEL_SU_CONTEXT, ksu_cred, false)) {
         pr_err("setup ksu cred failed.\n");
     }
 }
@@ -110,8 +113,8 @@ bool getenforce(void)
 	if (selinux_disabled) {
 		return false;
 	}
-#endif // KSU_COMPAT_USE_SELINUX_STATE
-#endif // CONFIG_SECURITY_SELINUX_DISABLE
+#endif
+#endif
 
 #ifdef CONFIG_SECURITY_SELINUX_DEVELOP
 #ifdef KSU_COMPAT_USE_SELINUX_STATE
@@ -143,12 +146,6 @@ static void __security_release_secctx(struct lsm_context *cp)
 #define __security_release_secctx security_release_secctx
 #endif
 
-/*
- * Initialize cached SID values for frequently checked SELinux contexts.
- * Called once after SELinux policy is loaded (post-fs-data).
- * This eliminates expensive string comparisons in hot paths.
- */
-
 void cache_sid(void)
 {
     int err;
@@ -160,6 +157,9 @@ void cache_sid(void)
         cached_su_sid = 0;
     } else {
         pr_info("Cached su SID: %u\n", cached_su_sid);
+#ifdef CONFIG_KSU_SUSFS
+        susfs_ksu_sid = cached_su_sid;
+#endif
     }
 
     err = security_secctx_to_secid(ZYGOTE_CONTEXT, strlen(ZYGOTE_CONTEXT),
@@ -169,6 +169,9 @@ void cache_sid(void)
         cached_zygote_sid = 0;
     } else {
         pr_info("Cached zygote SID: %u\n", cached_zygote_sid);
+#ifdef CONFIG_KSU_SUSFS
+        susfs_zygote_sid = cached_zygote_sid;
+#endif
     }
 
     err = security_secctx_to_secid(INIT_CONTEXT, strlen(INIT_CONTEXT),
@@ -178,6 +181,9 @@ void cache_sid(void)
         cached_init_sid = 0;
     } else {
         pr_info("Cached init SID: %u\n", cached_init_sid);
+#ifdef CONFIG_KSU_SUSFS
+        susfs_init_sid = cached_init_sid;
+#endif
     }
 
     err = security_secctx_to_secid(KSU_FILE_CONTEXT, strlen(KSU_FILE_CONTEXT),
@@ -188,12 +194,19 @@ void cache_sid(void)
     } else {
         pr_info("Cached ksu_file SID: %u\n", ksu_file_sid);
     }
+
+#ifdef CONFIG_KSU_SUSFS
+    err = security_secctx_to_secid(KERNEL_PRIV_APP_DOMAIN, strlen(KERNEL_PRIV_APP_DOMAIN),
+                                   &susfs_priv_app_sid);
+    if (err) {
+        pr_warn("Failed to cache susfs priv_app SID: %d\n", err);
+        susfs_priv_app_sid = 0;
+    } else {
+        pr_info("Cached susfs priv_app SID: %u\n", susfs_priv_app_sid);
+    }
+#endif
 }
 
-/*
- * Fast path: compare task's SID directly against cached value.
- * Falls back to string comparison if cache is not initialized.
- */
 static bool is_sid_match(const struct cred *cred, u32 cached_sid,
                          const char *fallback_context)
 {
@@ -209,12 +222,10 @@ static bool is_sid_match(const struct cred *cred, u32 cached_sid,
         return false;
     }
     
-    // Fast path: use cached SID if available
     if (likely(cached_sid != 0)) {
         return tsec->sid == cached_sid;
     }
 
-    // Slow path fallback: string comparison (only before cache is initialized)
     struct lsm_context ctx;
     bool result;
     if (__security_secid_to_secctx(tsec->sid, &ctx)) {
@@ -244,3 +255,76 @@ bool is_init(const struct cred *cred)
 {
     return is_sid_match(cred, cached_init_sid, INIT_CONTEXT);
 }
+
+void escape_to_root_for_adb_root(void)
+{
+    struct cred *cred = prepare_creds();
+    if (!cred) {
+        pr_err("Failed to prepare adbd's creds!\n");
+        return;
+    }
+
+    if (transive_to_domain(KERNEL_SU_CONTEXT, cred, true)) {
+        pr_err("transive domain failed.\n");
+        abort_creds(cred);
+        return;
+    }
+    commit_creds(cred);
+}
+
+#ifdef CONFIG_KSU_SUSFS
+bool susfs_is_sid_equal(const struct cred *cred, u32 sid2) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
+    const struct task_security_struct *tsec = selinux_cred(cred);
+#else
+    const struct cred_security_struct *tsec = selinux_cred(cred);
+#endif
+
+    if (!tsec) {
+        return false;
+    }
+    return tsec->sid == sid2;
+}
+
+u32 susfs_get_sid_from_name(const char *secctx_name)
+{
+    u32 out_sid = 0;
+    int err;
+    
+    if (!secctx_name) {
+        pr_err("secctx_name is NULL\n");
+        return 0;
+    }
+    err = security_secctx_to_secid(secctx_name, strlen(secctx_name),
+                       &out_sid);
+    if (err) {
+        pr_err("failed getting sid from secctx_name: %s, err: %d\n", secctx_name, err);
+        return 0;
+    }
+    return out_sid;
+}
+
+u32 susfs_get_current_sid(void) {
+    return current_sid();
+}
+
+bool susfs_is_current_zygote_domain(void) {
+    return unlikely(current_sid() == susfs_zygote_sid);
+}
+
+bool susfs_is_current_ksu_domain(void) {
+    return unlikely(current_sid() == susfs_ksu_sid);
+}
+
+bool susfs_is_current_init_domain(void) {
+    return unlikely(current_sid() == susfs_init_sid);
+}
+
+/* * Fungsi setter kosong (stub) di bawah ini dipertahankan demi menjaga 
+ * kompatibilitas panggilan eksternal dari berkas luar KSU / SuSFS hook.
+ */
+void susfs_set_zygote_sid(void) {}
+void susfs_set_ksu_sid(void) {}
+void susfs_set_init_sid(void) {}
+void susfs_set_priv_app_sid(void) {}
+#endif // #ifdef CONFIG_KSU_SUSFS
