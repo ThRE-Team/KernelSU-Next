@@ -11,6 +11,10 @@ echo "rifsxd  -> $word2"
 echo "ksunext -> $word3"
 echo ""
 
+word1=id
+word2=next
+word3=manager
+
 # Export variables for use in find -exec
 export word1 word2 word3
 
