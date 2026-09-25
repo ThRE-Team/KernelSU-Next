@@ -90,7 +90,7 @@ endif
 # Calculate version if git version is available
 ifdef KSU_GIT_VERSION_VALID
 # ksu_version: major * 30000 + git version for historical reasons
-$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 411))
+$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 408))
 $(info --> Next version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else
@@ -131,7 +131,7 @@ $(info --> Next Manager package name: $(KSU_MANAGER_PACKAGE))
 $(info --> Next Manager signature size: $(KSU_NEXT_MANAGER_SIZE))
 $(info --> Next Manager signature hash: $(KSU_NEXT_MANAGER_HASH))
 
-# RKSU: checks for available hook
+# KSU: checks for available hook
 ## Logic flipped for HAVE_KSU_HOOK: 0 is success, 1 is failure
 HAVE_KSU_HOOK ?= 1
 
@@ -310,5 +310,13 @@ ccflags-y += -DUSE_MULTI_MANAGER_LIST
 
 ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat -Wno-missing-prototypes
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-unused-variable
+
+## For susfs stuff ##
+ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
+$(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#define SUSFS_VERSION' | cut -d' ' -f3 | sed 's/"//g'))
+$(info --> Next SUSFS: $(SUSFS_VERSION))
+else
+$(info --> Next SuSFS: Not Integrate)
+endif
 
 # Keep a new line here!! Because someone may append config
