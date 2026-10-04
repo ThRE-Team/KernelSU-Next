@@ -88,13 +88,13 @@ endif
 # Calculate version if git version is available
 ifdef KSU_GIT_VERSION_VALID
 # ksu_version: major * 30000 + git version for historical reasons
-$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 320))
+$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 326))
 $(info --> Next version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else
 # If there is no .git directory, use default version
 # $(warning "KSU_GIT_VERSION not defined! It is better to make Next a git repository!")
-KSU_VERSION_FALLBACK := 33294
+KSU_VERSION_FALLBACK := 33319
 $(info --> Next version fallback: $(KSU_VERSION_FALLBACK))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION_FALLBACK)
 endif
