@@ -3,7 +3,12 @@
 #include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
-#include <asm/set_memory.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#include <linux/set_memory.h>
+#else
+#include <asm/cacheflush.h>
+#endif
 #include <linux/namei.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>

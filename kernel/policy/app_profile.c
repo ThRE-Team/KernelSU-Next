@@ -4,8 +4,13 @@
 #include <linux/capability.h>
 #include <linux/cred.h>
 #include <linux/sched.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #include <linux/sched/user.h>
 #include <linux/sched/signal.h>
+#else
+#include <linux/sched.h>
+#endif
 #include <linux/seccomp.h>
 #include <linux/slab.h>
 #include <linux/thread_info.h>

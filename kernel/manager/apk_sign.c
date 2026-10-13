@@ -23,6 +23,22 @@
 #include "uapi/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
 
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <linux/mm.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+// Di kernel 4.9, kvfree mungkin sudah ada, jadi kita cek atau buat wrapper kvmalloc saja
+static inline void *kvmalloc(size_t size, gfp_t flags)
+{
+	void *o;
+	o = kmalloc(size, flags | __GFP_NOWARN);
+	if (!o)
+		o = __vmalloc(size, flags, PAGE_KERNEL);
+	return o;
+}
+#endif
+
 struct sdesc {
 	struct shash_desc shash;
 	char ctx[];
