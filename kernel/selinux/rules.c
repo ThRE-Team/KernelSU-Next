@@ -58,7 +58,11 @@ extern int avc_ss_reset(struct selinux_avc *avc, u32 seqno);
 // reset avc cache table, otherwise the new rules will not take effect if already denied
 static void reset_avc_cache()
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 	u32 seqno = selinux_state.ss ? ++selinux_state.ss->latest_granting : 1;
+#else
+	u32 seqno = 1;
+#endif
 
 #if ((!defined(KSU_COMPAT_USE_SELINUX_STATE)) || \
 	LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))

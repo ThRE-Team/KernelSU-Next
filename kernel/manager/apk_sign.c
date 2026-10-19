@@ -23,6 +23,21 @@
 #include "uapi/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
 
+#include <linux/vmalloc.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+static inline void *kvmalloc(size_t size, gfp_t flags)
+{
+    void *ret;
+    if (size <= (PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER)) {
+        ret = kmalloc(size, flags | __GFP_NOWARN);
+        if (ret)
+            return ret;
+    }
+    return vmalloc(size);
+}
+#endif
+
 struct sdesc {
 	struct shash_desc shash;
 	char ctx[];
