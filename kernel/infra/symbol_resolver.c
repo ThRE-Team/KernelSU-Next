@@ -2,16 +2,15 @@
 #include <linux/kallsyms.h>
 #include <linux/module.h>
 #include <linux/mm.h>
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #include <linux/sched/signal.h>
+#endif
+
 #include <linux/slab.h>
 #include <linux/sort.h>
 #include <linux/string.h>
-#include <linux/version.h>
-
-// __nocfi is an arm64-only attribute; make it a no-op elsewhere
-#ifndef __nocfi
-#define __nocfi
-#endif
 
 #include "infra/symbol_resolver.h"
 
@@ -316,12 +315,15 @@ int __nocfi ksu_lookup_kernel_symbols(const char *const *names, unsigned long *a
     int ret = 0;
     u32 i, n = 0;
 
+    // 1. Alokasi struktur context utama
     ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
     if (!ctx)
         return -ENOMEM;
-    ctx->entries = kvmalloc_array(count, sizeof(*ctx->entries), GFP_KERNEL);
+
+    // 2. Alokasi array entries (Gunakan kmalloc_array untuk kernel 4.9)
+    ctx->entries = kmalloc_array(count, sizeof(*ctx->entries), GFP_KERNEL);
     if (!ctx->entries) {
-        kfree(ctx);
+        kfree(ctx); // Jika gagal, bersihkan ctx lalu return error
         return -ENOMEM;
     }
 
@@ -374,7 +376,7 @@ int __nocfi ksu_lookup_kernel_symbols(const char *const *names, unsigned long *a
         }
     }
 
-    kvfree(ctx->entries);
+    kfree(ctx->entries);
     kfree(ctx);
     return ret;
 }

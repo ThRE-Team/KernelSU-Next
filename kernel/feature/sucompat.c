@@ -12,7 +12,6 @@
 #endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 #include <linux/compiler_types.h>
-#else
 #include <linux/compiler.h>
 #endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
@@ -21,7 +20,6 @@
 #include <linux/sched.h>
 #endif
 #include <linux/ptrace.h>
-#include <linux/fcntl.h>
 
 #include "objsec.h"
 
@@ -30,13 +28,12 @@
 #include "policy/feature.h"
 #include "klog.h" // IWYU pragma: keep
 #include "runtime/ksud.h"
-#include "runtime/ksud_boot.h"
 #include "compat/kernel_compat.h"
 #include "sucompat.h"
 #include "policy/app_profile.h"
 #include "selinux/selinux.h"
+#include "supercall/supercall.h"
 #include "sulog/event.h"
-#include "util.h"
 
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
@@ -63,6 +60,19 @@ static const struct ksu_feature_handler su_compat_handler = {
 	.get_handler = su_compat_feature_get,
 	.set_handler = su_compat_feature_set,
 };
+
+static void __user *userspace_stack_buffer(const void *d, size_t len)
+{
+	// Stack Pointer must be 16-byte aligned.
+	// We also subtract a safe margin (256 bytes) 
+	// to avoid corrupting local variables or smth
+	unsigned long sp = current_user_stack_pointer();
+	sp = (sp - len - 256) & ~0xFUL; // Align downwards to nearest 16 bytes
+
+	char __user *p = (char __user *)sp;
+
+	return copy_to_user(p, d, len) ? NULL : p;
+}
 
 static char __user *sh_user_path(void)
 {
@@ -134,20 +144,16 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 	return 0;
 }
 
-static long ksu_handle_execve_sucompat_common(const char __user **filename_user,
-		const char __user *const __user *argv_user, bool execveat,
-		const struct pt_regs *regs)
+long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
 {
 	const char su[] = SU_PATH;
 	const char __user *fn;
+	const char __user *const __user *argv_user = (const char __user *const __user *)PT_REGS_PARM2(regs);
 	struct ksu_sulog_pending_event *pending_sucompat = NULL;
 	char path[sizeof(su) + 1];
 	long ret;
 	unsigned long addr;
-
-	if (execveat && ((int)PT_REGS_PARM1(regs) != AT_FDCWD ||
-			 (int)PT_REGS_PARM5(regs) != 0))
-		goto do_orig_execve;
+	int su_fd = -1;
 
 	if (unlikely(!filename_user))
 		goto do_orig_execve;
@@ -158,7 +164,7 @@ static long ksu_handle_execve_sucompat_common(const char __user **filename_user,
 	if (!ksu_is_allow_uid_for_current(current_uid().val))
 		goto do_orig_execve;
 
-	addr = untagged_addr((unsigned long)READ_ONCE(*filename_user));
+	addr = untagged_addr((unsigned long)*filename_user);
 	fn = (const char __user *)addr;
 	memset(path, 0, sizeof(path));
 
@@ -188,20 +194,12 @@ static long ksu_handle_execve_sucompat_common(const char __user **filename_user,
 		ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
 		goto do_orig_execve;
 	}
+	su_fd = ksu_install_su_fd();
+	if (su_fd < 0) {
+		pr_warn("install su session fd failed: %d\n", su_fd);
+	}
 	if (preempt_count() > 0) {
-		/*
-		 * Can't open files here (kprobe context). Before the manager has
-		 * installed /data/adb/ksud, redirecting to it makes su fail with
-		 * ENOENT and the manager never gets a root shell to install it.
-		 * Use sh until then, and re-check in process context so su
-		 * switches to ksud as soon as the manager has installed it.
-		 */
-		if (READ_ONCE(ksu_ksud_present)) {
-			*filename_user = ksud_user_path();
-		} else {
-			*filename_user = sh_user_path();
-			ksu_recheck_ksud();
-		}
+		*filename_user = ksud_user_path();
 	} else {
 		struct file *f = ksu_filp_open_compat(KSUD_PATH, O_RDONLY, 0);
 		if (IS_ERR(f)) {
@@ -218,20 +216,6 @@ do_orig_execve:
 	return 0;
 }
 
-long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
-{
-	return ksu_handle_execve_sucompat_common(filename_user,
-			(const char __user *const __user *)PT_REGS_PARM2(regs),
-			false, regs);
-}
-
-long ksu_handle_execveat_sucompat_user(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
-{
-	return ksu_handle_execve_sucompat_common(filename_user,
-			(const char __user *const __user *)PT_REGS_PARM3(regs),
-			true, regs);
-}
-
 int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 				 void *__never_use_argv, void *__never_use_envp,
 				 int *__never_use_flags)
@@ -239,8 +223,6 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 	struct filename *filename;
 	const char su[] = SU_PATH;
 	static const char ksud_path[] = KSUD_PATH;
-	struct ksu_sulog_pending_event *pending_root = NULL;
-	const char *const *sucompat_argv = (const char *const *)__never_use_argv;
 
 	if (unlikely(!filename_ptr))
 		return 0;
@@ -259,13 +241,9 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 		return 0;
 
 	pr_info("do_execveat_common su found\n");
-
-	pending_root = ksu_sulog_capture_root_execve_kern(filename->name, sucompat_argv, GFP_KERNEL);
-
 	memcpy((void *)filename->name, ksud_path, sizeof(ksud_path));
 
 	escape_with_root_profile();
-	ksu_sulog_emit_pending(pending_root, 0, GFP_KERNEL);
 
 	return 0;
 }
