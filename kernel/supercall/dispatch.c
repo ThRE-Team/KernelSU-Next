@@ -25,6 +25,7 @@
 #include "supercall/supercall.h"
 #include "infra/symbol_resolver.h"
 #include "preinit/preinit.h"
+#include <linux/kallsyms.h>
 
 static int do_grant_root(void __user *arg)
 {
