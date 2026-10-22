@@ -34,17 +34,6 @@
 extern void disable_seccomp(struct task_struct *tsk);
 
 #ifdef CONFIG_KSU_SUSFS
-static inline bool is_zygote_isolated_service_uid(uid_t uid)
-{
-    uid %= 100000;
-    return (uid >= 99000 && uid < 100000);
-}
-
-static inline bool is_zygote_normal_app_uid(uid_t uid)
-{
-    uid %= 100000;
-    return (uid >= 10000 && uid < 19999);
-}
 
 extern u32 susfs_zygote_sid;
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
@@ -62,6 +51,18 @@ static void ksu_install_manager_fd_tw_func(struct callback_head *cb)
 {
     ksu_install_fd();
     kfree(cb);
+}
+
+static inline bool is_zygote_isolated_service_uid(uid_t uid)
+{
+    uid %= 100000;
+    return (uid >= 99000 && uid < 100000);
+}
+
+static inline bool is_zygote_normal_app_uid(uid_t uid)
+{
+    uid %= 100000;
+    return (uid >= 10000 && uid < 19999);
 }
 
 int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
@@ -154,7 +155,9 @@ do_umount:
     susfs_run_sus_path_loop(new_uid);
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 
+#ifdef CONFIG_KSU_SUSFS
     susfs_set_current_proc_umounted();
+#endif
 
     return 0;
 }
