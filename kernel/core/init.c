@@ -22,6 +22,10 @@
 #include "selinux/selinux.h"
 #include "feature/selinux_hide.h"
 #include "feature/adb_root.h"
+#include "feature/shell_su_adb_only.h"
+
+//disable preinit
+//#include "preinit/preinit.h"
 
 extern void __init ksu_lsm_hook_init(void);
 extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
@@ -110,7 +114,10 @@ int __init kernelsu_init(void)
 
 	ksu_supercalls_init();
 
+	ksu_shell_su_adb_only_init();
 	
+	// disable preinit
+	//ksu_preinit_init();
 
 	if (ksu_late_loaded) {
 		pr_info("late load mode, skipping kprobe hooks\n");
@@ -175,8 +182,11 @@ void __exit kernelsu_exit(void)
 
 	ksu_supercalls_exit();
 
-	if (!ksu_late_loaded)
+	if (!ksu_late_loaded) {
 		ksu_ksud_exit();
+		// disable preinit
+		//ksu_preinit_exit();
+	}
 
 	// Wait for any in-flight RCU readers (e.g. handler traversing allow_list)
 	synchronize_rcu();
@@ -191,6 +201,8 @@ void __exit kernelsu_exit(void)
 	ksu_sulog_exit();
 
 	ksu_adb_root_exit();
+	
+	ksu_shell_su_adb_only_exit();
 
 	ksu_feature_exit();
 
