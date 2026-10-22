@@ -356,7 +356,14 @@ int get_pkg_from_apk_dir_path(char *pkg, const char *path)
 	if (len >= KSU_MAX_PACKAGE_NAME || len < 1)
 		return -1;
 
-	const char *last_slash = strrchr(path, '/');
+	const char *last_slash = NULL;
+	int i;
+	for (i = len - 1; i >= 0; i--) {
+		if (path[i] == '/') {
+			last_slash = &path[i];
+			break;
+		}
+	}
 
 	if (!last_slash)
 		return -1;
