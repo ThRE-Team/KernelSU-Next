@@ -30,7 +30,11 @@ initialize_variables() {
 # Reverts modifications made by this script
 perform_cleanup() {
     echo "[+] Cleaning up..."
-    [ -L "$DRIVER_DIR/kernelsu" ] && rm "$DRIVER_DIR/kernelsu" && echo "[-] Symlink removed."
+    if [ -L "$DRIVER_DIR/kernelsu" ]; then
+        rm "$DRIVER_DIR/kernelsu" && echo "[-] Symlink removed."
+    elif [ -d "$DRIVER_DIR/kernelsu" ]; then
+        rm -rf "$DRIVER_DIR/kernelsu" && echo "[-] Folder removed."
+    fi
     grep -q "kernelsu" "$DRIVER_MAKEFILE" && sed -i '/kernelsu/d' "$DRIVER_MAKEFILE" && echo "[-] Makefile reverted."
     grep -q "drivers/kernelsu/Kconfig" "$DRIVER_KCONFIG" && sed -i '/drivers\/kernelsu\/Kconfig/d' "$DRIVER_KCONFIG" && echo "[-] Kconfig reverted."
     if [ -d "$GKI_ROOT/$REPO" ]; then
@@ -40,6 +44,10 @@ perform_cleanup() {
 
 # Sets up or update KernelSU-Next environment
 setup_kernelsu() {
+    if [ -d "$DRIVER_DIR/kernelsu" ]; then
+        echo "[+] Preparing fresh setup (cleaning up old instances)..."
+        rm -rf "$DRIVER_DIR/kernelsu"
+    fi
     echo "[+] Setting up $REPO..."
     test -d "$GKI_ROOT/$REPO" || git clone "https://github.com/$OWNER/$REPO" && echo "[+] Repository cloned."
     cd "$GKI_ROOT/$REPO"

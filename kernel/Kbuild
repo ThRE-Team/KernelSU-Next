@@ -90,7 +90,7 @@ endif
 # Calculate version if git version is available
 ifdef KSU_GIT_VERSION_VALID
 # ksu_version: major * 30000 + git version for historical reasons
-$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 408))
+$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 405))
 $(info --> Next version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else
@@ -315,6 +315,39 @@ ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-unused-v
 ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
 $(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#define SUSFS_VERSION' | cut -d' ' -f3 | sed 's/"//g'))
 $(info --> Next SUSFS: $(SUSFS_VERSION))
+endif
+
+ifeq ($(CONFIG_LIMITLESS),y)
+    $(info --> Limitless Addon: Support)
+    $(info -----------------------------)
+    # Limitless Identity
+    ifeq ($(shell grep -q "thre_kernel_name" $(srctree)/init/version.c && echo 1 || echo 0),1)
+        $(info • Limitless Identity √)
+    endif
+    # Limitless Loader
+    ifeq ($(shell grep -q "spoof_bootloader_params" $(srctree)/fs/proc/cmdline.c && echo 1 || echo 0),1)
+        $(info • Limitless Loader √)
+    endif
+    # Limitless Silent OC
+    ifeq ($(shell grep -q "thre_oc_level" $(srctree)/drivers/clk/qcom/clk-cpu-osm.c && echo 1 || echo 0),1)
+        $(info • Limitless S-OC √)
+    endif
+    # Limitless Stealth
+    ifneq ($(wildcard $(srctree)/fs/next_hide.c),)
+        $(info • Limitless Stealth √)
+    endif
+    # Limitless Voter
+    ifeq ($(shell grep -q "LIMITLESS_VOTER" $(srctree)/drivers/power/supply/qcom/qpnp-smb2.c && echo 1 || echo 0),1)
+        $(info • Limitless Voter √)
+    endif
+    # Limitless Addon Version
+    LIMITLESS_VER := $(shell grep -m1 "SDCARDFS_VERSION" $(srctree)/fs/sdcardfs/sdcardfs.h | cut -d'"' -f2)
+    ifneq ($(LIMITLESS_VER),)
+        $(info • $(LIMITLESS_VER) Integrated √)
+    else
+        $(info • Limitless Version: Not Found ?)
+    endif
+    $(info -----------------------------)
 endif
 
 # Keep a new line here!! Because someone may append config
