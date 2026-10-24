@@ -157,4 +157,10 @@ config KSU_SUSFS_SUS_MAP
 
 endmenu
 
+config LIMITLESS
+    bool "Limitless Addon"
+    default y
+    help
+      Enable Limitless Addon features.
+
 endmenu

@@ -73,16 +73,81 @@ setup_kernelsu() {
     echo '[+] Done.'
 }
 
+# Setup Limitless Addon
+limitless_addon() {
+    if [ -d "$GKI_ROOT/common/init" ]; then
+        INIT_DIR="$GKI_ROOT/common/init"
+    elif [ -d "$GKI_ROOT/init" ]; then
+        INIT_DIR="$GKI_ROOT/init"
+    else
+        return 0
+    fi
+
+    VERSION_C="$INIT_DIR/version.c"
+    PROC_VERSION_C="$GKI_ROOT/fs/proc/version.c"
+
+    HAS_INIT_VER=0
+    HAS_PROC_VER=0
+
+    [ -f "$VERSION_C" ] && grep -q "CONFIG_LIMITLESS" "$VERSION_C" && HAS_INIT_VER=1
+    [ -f "$PROC_VERSION_C" ] && grep -q "CONFIG_LIMITLESS" "$PROC_VERSION_C" && HAS_PROC_VER=1
+
+    if [ "$HAS_INIT_VER" -eq 1 ] && [ "$HAS_PROC_VER" -eq 1 ]; then
+        echo "[+] Setting up Limitess Addon..."
+
+        INIT_MAKEFILE="$INIT_DIR/Makefile"
+        LIMITLESS_SRC="$GKI_ROOT/$REPO/kernel/core/limitless.c"
+
+        if [ -f "$LIMITLESS_SRC" ]; then
+            LIMITLESS_REL_SRC="$(realpath --relative-to="$INIT_DIR" "$LIMITLESS_SRC")"
+            ln -sf "$LIMITLESS_REL_SRC" "$INIT_DIR/limitless.c" && echo "[+] Symlink created."
+
+            if ! grep -q "CONFIG_LIMITLESS" "$INIT_MAKEFILE"; then
+                echo "[+] Injecting CONFIG_LIMITLESS block into $INIT_MAKEFILE..."
+                
+                cp "$INIT_MAKEFILE" "$INIT_MAKEFILE.orig"
+
+                sed -i '/obj-y[[:space:]]*:= main.o version.o mounts.o/c\
+ifeq ($(CONFIG_LIMITLESS),y)\
+obj-y := main.o version.o limitless.o mounts.o\
+else\
+obj-y := main.o version.o mounts.o\
+endif' "$INIT_MAKEFILE" && echo "[+] Makefile successfully patched."
+            else
+                echo "[-] CONFIG_LIMITLESS entry already exists in Makefile."
+            fi
+        else
+            echo "[-] $LIMITLESS_SRC not found, skipping Limitless symlink."
+        fi
+    fi
+}
+
+# Limitless Cleanup
+limitless_cleanup() {
+    INIT_DIR_CLEAN="$GKI_ROOT/init"
+    [ -d "$GKI_ROOT/common/init" ] && INIT_DIR_CLEAN="$GKI_ROOT/common/init"
+    
+    if [ -L "$INIT_DIR_CLEAN/limitless.c" ]; then
+        rm -f "$INIT_DIR_CLEAN/limitless.c" && echo "[-] Limitless symlink removed."
+    fi
+    if [ -f "$INIT_DIR_CLEAN/Makefile.orig" ]; then
+        mv "$INIT_DIR_CLEAN/Makefile.orig" "$INIT_DIR_CLEAN/Makefile" && echo "[-] init/Makefile.orig restored."
+    fi
+}
+
 # Process command-line arguments
 if [ "$#" -eq 0 ]; then
     initialize_variables
     setup_kernelsu
+    limitless_addon
 elif [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     display_usage
 elif [ "$1" = "--cleanup" ]; then
     initialize_variables
     perform_cleanup
+    limitless_cleanup
 else
     initialize_variables
     setup_kernelsu "$@"
+    limitless_addon
 fi

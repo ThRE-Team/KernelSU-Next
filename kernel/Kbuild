@@ -321,7 +321,9 @@ ifeq ($(CONFIG_LIMITLESS),y)
     $(info --> Limitless Addon: Support)
     $(info -----------------------------)
     # Limitless Identity
-    ifeq ($(shell grep -q "thre_kernel_name" $(srctree)/init/version.c && echo 1 || echo 0),1)
+    HAS_INIT_VER := $(shell grep -q "CONFIG_LIMITLESS" $(srctree)/init/version.c 2>/dev/null && echo 1 || echo 0)
+    HAS_PROC_VER := $(shell grep -q "CONFIG_LIMITLESS" $(srctree)/fs/proc/version.c 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(and $(filter 1,$(HAS_INIT_VER)),$(filter 1,$(HAS_PROC_VER))),1)
         $(info • Limitless Identity √)
     endif
     # Limitless Loader
@@ -341,11 +343,9 @@ ifeq ($(CONFIG_LIMITLESS),y)
         $(info • Limitless Voter √)
     endif
     # Limitless Addon Version
-    LIMITLESS_VER := $(shell grep -m1 "SDCARDFS_VERSION" $(srctree)/fs/sdcardfs/sdcardfs.h | cut -d'"' -f2)
+    LIMITLESS_VER := $(shell grep -m1 "LIMITLESS_ADDON" $(srctree)/fs/sdcardfs/sdcardfs.h | cut -d'"' -f2)
     ifneq ($(LIMITLESS_VER),)
-        $(info • $(LIMITLESS_VER) Integrated √)
-    else
-        $(info • Limitless Version: Not Found ?)
+        $(info • Limitless Version: $(LIMITLESS_VER))
     endif
     $(info -----------------------------)
 endif
