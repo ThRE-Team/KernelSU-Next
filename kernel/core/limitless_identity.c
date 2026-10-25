@@ -1,5 +1,5 @@
 /*
- *  linux/init/limitless.c
+ *  Limitless Identity v3.0
  *
  *  Copyright (C) 2026 ThRE Team
  */
@@ -12,7 +12,6 @@
 
 #ifdef CONFIG_LIMITLESS
 
-/* --> Limitless Identity */
 extern struct uts_namespace init_uts_ns;
 
 char thre_kernel_name[64] = UTS_RELEASE;
@@ -121,6 +120,5 @@ module_param_cb(thre_user_name,   &user_ops,        thre_user_name,   0644);
 module_param_cb(thre_host_name,   &host_ops,        thre_host_name,   0644);
 module_param_cb(thre_compiler,    &comp_ops,        thre_compiler,    0644);
 module_param_cb(thre_build_date,  &date_ops,        thre_build_date,  0644);
-/* Limitless Identity <-- */
 
 #endif

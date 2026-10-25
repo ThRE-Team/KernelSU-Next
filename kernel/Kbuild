@@ -331,7 +331,7 @@ ifeq ($(CONFIG_LIMITLESS),y)
         $(info • Limitless Loader √)
     endif
     # Limitless Silent OC
-    ifeq ($(shell grep -q "thre_oc_level" $(srctree)/drivers/clk/qcom/clk-cpu-osm.c && echo 1 || echo 0),1)
+    ifeq ($(shell grep -q "CONFIG_LIMITLESS" $(srctree)/drivers/clk/qcom/clk-cpu-osm.c && echo 1 || echo 0),1)
         $(info • Limitless S-OC √)
     endif
     # Limitless Stealth

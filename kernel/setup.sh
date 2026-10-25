@@ -75,6 +75,12 @@ setup_kernelsu() {
 
 # Setup Limitless Addon
 limitless_addon() {
+echo "[+] Setting up Limitess Addon..."
+limitless_identity
+limitless_soc
+}
+
+limitless_identity() {
     if [ -d "$GKI_ROOT/common/init" ]; then
         INIT_DIR="$GKI_ROOT/common/init"
     elif [ -d "$GKI_ROOT/init" ]; then
@@ -93,10 +99,10 @@ limitless_addon() {
     [ -f "$PROC_VERSION_C" ] && grep -q "CONFIG_LIMITLESS" "$PROC_VERSION_C" && HAS_PROC_VER=1
 
     if [ "$HAS_INIT_VER" -eq 1 ] && [ "$HAS_PROC_VER" -eq 1 ]; then
-        echo "[+] Setting up Limitess Addon..."
+        echo "[+] Setting up Limitess Identity..."
 
         INIT_MAKEFILE="$INIT_DIR/Makefile"
-        LIMITLESS_SRC="$GKI_ROOT/$REPO/kernel/core/limitless.c"
+        LIMITLESS_SRC="$GKI_ROOT/$REPO/kernel/core/limitless_identity.c"
 
         if [ -f "$LIMITLESS_SRC" ]; then
             LIMITLESS_REL_SRC="$(realpath --relative-to="$INIT_DIR" "$LIMITLESS_SRC")"
@@ -117,13 +123,56 @@ endif' "$INIT_MAKEFILE" && echo "[+] Makefile successfully patched."
                 echo "[-] CONFIG_LIMITLESS entry already exists in Makefile."
             fi
         else
-            echo "[-] $LIMITLESS_SRC not found, skipping Limitless symlink."
+            echo "[-] $LIMITLESS_SRC not found, skipping Limitless Identity."
         fi
+    fi
+}
+
+limitless_soc() {
+    if [ -d "$GKI_ROOT/common/drivers/clk/qcom" ]; then
+        CLK_DIR="$GKI_ROOT/common/drivers/clk/qcom"
+    elif [ -d "$GKI_ROOT/drivers/clk/qcom" ]; then
+        CLK_DIR="$GKI_ROOT/drivers/clk/qcom"
+    else
+        return 0
+    fi
+
+    OSM_C="$CLK_DIR/clk-cpu-osm.c"
+    HAS_OSM_SOC=0
+
+    [ -f "$OSM_C" ] && grep -q "CONFIG_LIMITLESS" "$OSM_C" && HAS_OSM_SOC=1
+
+    if [ "$HAS_OSM_SOC" -eq 1 ]; then
+        echo "[+] Setting up Limitless S-OC..."
+        
+        CLK_MAKEFILE="$CLK_DIR/Makefile"
+        LIMITLESS_C_SRC="$GKI_ROOT/$REPO/kernel/core/limitless_soc.c"
+        LIMITLESS_H_SRC="$GKI_ROOT/$REPO/kernel/core/limitless_soc.h"
+
+        if [ -f "$LIMITLESS_C_SRC" ] && [ -f "$LIMITLESS_H_SRC" ]; then
+            ln -sf "$(realpath --relative-to="$CLK_DIR" "$LIMITLESS_C_SRC")" "$CLK_DIR/limitless.c" && echo "[+] Symlink limitless.c created."
+            ln -sf "$(realpath --relative-to="$CLK_DIR" "$LIMITLESS_H_SRC")" "$CLK_DIR/limitless.h" && echo "[+] Symlink limitless.h created."
+
+            if [ -f "$CLK_MAKEFILE" ]; then
+                if ! grep -q "CONFIG_LIMITLESS" "$CLK_MAKEFILE"; then
+                    echo "[+] Injecting CONFIG_LIMITLESS into $CLK_MAKEFILE..."
+                    cp "$CLK_MAKEFILE" "$CLK_MAKEFILE.orig"
+                    printf "\nobj-\$(CONFIG_LIMITLESS) += limitless.o\n" >> "$CLK_MAKEFILE" && echo "[+] Makefile successfully patched."
+                else
+                    echo "[-] CONFIG_LIMITLESS entry already exists in Makefile."
+                fi
+            fi
+        else
+            echo "[-] Limitless source files not found in $REPO repository, skipping."
+        fi
+    else
+        echo "[-] S-OC hook not found, skipping Limitless S-OC."
     fi
 }
 
 # Limitless Cleanup
 limitless_cleanup() {
+    # Limitless Idenrity
     INIT_DIR_CLEAN="$GKI_ROOT/init"
     [ -d "$GKI_ROOT/common/init" ] && INIT_DIR_CLEAN="$GKI_ROOT/common/init"
     
@@ -132,6 +181,20 @@ limitless_cleanup() {
     fi
     if [ -f "$INIT_DIR_CLEAN/Makefile.orig" ]; then
         mv "$INIT_DIR_CLEAN/Makefile.orig" "$INIT_DIR_CLEAN/Makefile" && echo "[-] init/Makefile.orig restored."
+    fi
+    # Limitless S-OC
+    CLK_DIR_CLEAN="$GKI_ROOT/drivers/clk/qcom"
+    [ -d "$GKI_ROOT/common/drivers/clk/qcom" ] && CLK_DIR_CLEAN="$GKI_ROOT/common/drivers/clk/qcom"
+    if [ -n "$CLK_DIR_CLEAN" ]; then
+        if [ -L "$CLK_DIR_CLEAN/limitless.c" ]; then
+            rm -f "$CLK_DIR_CLEAN/limitless.c" && echo "[-] Limitless.c symlink removed."
+        fi
+        if [ -L "$CLK_DIR_CLEAN/limitless.h" ]; then
+            rm -f "$CLK_DIR_CLEAN/limitless.h" && echo "[-] Limitless.h symlink removed."
+        fi
+        if [ -f "$CLK_DIR_CLEAN/Makefile.orig" ]; then
+            mv "$CLK_DIR_CLEAN/Makefile.orig" "$CLK_DIR_CLEAN/Makefile" && echo "[-] drivers/clk/qcom/Makefile.orig restored."
+        fi
     fi
 }
 
