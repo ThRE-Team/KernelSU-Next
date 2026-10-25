@@ -334,8 +334,20 @@ ifeq ($(CONFIG_LIMITLESS),y)
     ifeq ($(shell grep -q "CONFIG_LIMITLESS" $(srctree)/drivers/clk/qcom/clk-cpu-osm.c && echo 1 || echo 0),1)
         $(info • Limitless S-OC √)
     endif
+    # Limitless Silent UC
+    ifeq ($(shell [ -f "$(srctree)/arch/arm64/boot/dts/qcom/sdm845-v2.dtsi" ] && echo 1 || echo 0),1)
+        $(info • Limitless S-UC √)
+    endif
     # Limitless Stealth
-    ifneq ($(wildcard $(srctree)/fs/next_hide.c),)
+    ifeq ($(shell \
+        if grep -q "next_hide.h" "$(srctree)/fs/namei.c" && \
+           grep -q "next_hide.h" "$(srctree)/fs/open.c" && \
+           grep -q "next_hide.h" "$(srctree)/fs/readdir.c" && \
+           grep -q "next_hide.h" "$(srctree)/fs/stat.c"; then \
+            echo 1; \
+        else \
+            echo 0; \
+        fi),1)
         $(info • Limitless Stealth √)
     endif
     # Limitless Voter
