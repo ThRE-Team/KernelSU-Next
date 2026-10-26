@@ -157,10 +157,54 @@ config KSU_SUSFS_SUS_MAP
 
 endmenu
 
+menu "Limitless"
 config LIMITLESS
     bool "Limitless Addon"
     default y
     help
       Enable Limitless Addon features.
+config LIMITLESS_IDENTITY
+	bool "Limitless Identity"
+	depends on LIMITLESS
+	default y
+	help
+	  Enable identity spoofing features.
+
+config LIMITLESS_LOADER
+	bool "Limitless Identity"
+	depends on LIMITLESS
+	default y
+	help
+	  Enable bootloader spoofing features.
+
+config LIMITLESS_SOC
+	bool "Limitless S-OC"
+	depends on LIMITLESS
+	default y
+	help
+	  Enable S-OC performance control modes.
+
+config LIMITLESS_SUC
+	bool "Limitless SUC"
+	depends on LIMITLESS
+	default y
+	help
+	  Enable S-UC features.
+
+config LIMITLESS_STEALTH
+	bool "Limitless Stealth"
+	depends on LIMITLESS
+	default y
+	help
+	  Enable stealth and hiding features.
+
+config LIMITLESS_VOTER
+	bool "Limitless Voter"
+	depends on LIMITLESS
+	default y
+	help
+	  Enable voter features.
+
+endmenu
 
 endmenu
