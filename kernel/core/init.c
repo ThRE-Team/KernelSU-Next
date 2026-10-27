@@ -32,6 +32,8 @@
 //#include "preinit/preinit.h"
 
 extern void __init ksu_lsm_hook_init(void);
+extern void __init ksu_syscall_table_hook_init(void);
+
 extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 					void *argv, void *envp, int *flags);
 extern int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
@@ -159,6 +161,9 @@ int __init kernelsu_init(void)
 		}
 
 	} else {
+#ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
+		ksu_syscall_table_hook_init();
+#endif
 		ksu_syscall_hook_manager_init();
 		
 		ksu_lsm_hook_init();

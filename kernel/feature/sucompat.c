@@ -260,3 +260,18 @@ void __exit ksu_sucompat_exit()
 {
 	ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
 }
+
+int ksu_handle_sys_execve(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
+{
+    return ksu_handle_execve_sucompat(filename_user, orig_nr, regs);
+}
+
+int ksu_handle_sys_execveat(int *fd, struct filename **filename_ptr, void *argv, void *envp, int *flags)
+{
+    return ksu_handle_execveat_sucompat(fd, filename_ptr, argv, envp, flags);
+}
+
+long ksu_handle_sys_read_fd(unsigned int fd, char __user *buf, size_t count)
+{
+    return 0;
+}

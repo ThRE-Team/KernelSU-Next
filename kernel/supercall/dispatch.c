@@ -538,7 +538,11 @@ static int do_get_hook_mode(void __user *arg)
 	const char *type = "Kprobes";
 
 #ifndef KSU_KPROBES_HOOK
-	type = "Manual";
+    #if defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+        type = "Silent";
+    #else
+        type = "Manual";
+    #endif
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
