@@ -51,7 +51,6 @@ setup_kernelsu() {
     fi
     echo "[+] Setting up $REPO..."
     test -d "$GKI_ROOT/$REPO" || git clone "https://github.com/$OWNER/$NEXT" $REPO && echo "[+] Repository cloned."
-    limitless_addon
     echo "[+] Setting up Next Driver..."
     cd "$GKI_ROOT/$REPO"
     git stash && echo "[-] Stashed current changes."
@@ -269,6 +268,7 @@ limitless_cleanup() {
 if [ "$#" -eq 0 ]; then
     initialize_variables
     setup_kernelsu
+    limitless_addon
 elif [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     display_usage
 elif [ "$1" = "--cleanup" ]; then
@@ -278,4 +278,5 @@ elif [ "$1" = "--cleanup" ]; then
 else
     initialize_variables
     setup_kernelsu "$@"
+    limitless_addon
 fi
