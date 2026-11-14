@@ -53,7 +53,7 @@ config KSU_TAMPER_SYSCALL_TABLE
 	bool "tamper sys_call_table for sucompat + sys_reboot"
 	depends on KSU
 	depends on ARM64
-	default y
+	default n
 	help
 	  Use a high-performance syscall table hijacking method demonstrated on zx2c4's
 	  kernel-assisted-superuser. Replaces sys_reboot, sys_execve, sys_newfstatat,
@@ -110,7 +110,7 @@ config KSU_SUSFS_SUS_KSTAT
 config KSU_SUSFS_TRY_UMOUNT
 	bool "Enable to use ksu's try_umount"
 	depends on KSU_SUSFS
-	default y
+	default n
 	help
 		- Allow using try_umount to umount other user-defined mount paths prior to ksu's default umount paths.
 		- Effective only on zygote spawned umounted user app process.
