@@ -52,6 +52,7 @@ static const char* const hidden_names[] = {
 	"adb",
 	"ksu",
 	"magisk",
+	"selinux",
 	"zygisk"
 };
 
