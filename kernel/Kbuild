@@ -160,11 +160,9 @@ HAVE_KSU_HOOK := 0
 endif
 
 ifeq ($(CONFIG_KSU_MANUAL_HOOK), y)
-ifeq ($(CONFIG_KSU_TAMPER_SYSCALL_TABLE), n)
 HAVE_KSU_HOOK := $(shell grep -q "ksu_handle_sys_reboot" $(srctree)/kernel/reboot.c && echo 0 || echo 1)
 ifeq ($(HAVE_KSU_HOOK),0)
 $(info --> Next: Hook mode: Manual)
-endif
 endif
 endif
 
