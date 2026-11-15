@@ -142,6 +142,7 @@ ksu_allow(db, "kernel", KERNEL_SU_FILE, ALL, ALL);
     // our ksud triggered by init
     ksu_allow(db, "init", "adb_data_file", "file", ALL);
     ksu_allow(db, "init", "adb_data_file", "dir", ALL); // #1289
+    ksu_allow(db, "init", KERNEL_SU_FILE, ALL, ALL);
     ksu_allow(db, "init", KERNEL_SU_DOMAIN, ALL, ALL);
     // we need to umount modules in zygote
     ksu_allow(db, "zygote", "adb_data_file", "dir", "search");
