@@ -14,6 +14,10 @@
 
 #include "infra/symbol_resolver.h"
 
+#ifndef __nocfi
+#define __nocfi
+#endif
+
 // https://github.com/torvalds/linux/commit/89245600941e4e0f87d77f60ee269b5e61ef4e49
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 #define USE_KCFI 1
