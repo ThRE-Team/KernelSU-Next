@@ -18,6 +18,7 @@
 
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/susfs_def.h>
+#include <linux/workqueue.h>
 #endif // #ifdef CONFIG_KSU_SUSFS
  
 #include "policy/allowlist.h"
@@ -34,17 +35,8 @@
 extern void disable_seccomp(struct task_struct *tsk);
 
 #ifdef CONFIG_KSU_SUSFS
-
 extern u32 susfs_zygote_sid;
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-extern void susfs_run_sus_path_loop(uid_t uid);
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-extern void susfs_reorder_mnt_id(void);
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-extern void susfs_try_umount(uid_t uid);
-#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+extern struct work_struct susfs_extra_works;
 #endif // #ifdef CONFIG_KSU_SUSFS
 
 static void ksu_install_manager_fd_tw_func(struct callback_head *cb)
@@ -89,11 +81,6 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
 
     if (unlikely(is_uid_manager(new_uid))) {
 
-        // Check if spawned process is normal user app and needs to be umounted
-        if (likely(is_zygote_normal_app_uid(new_uid) && ksu_uid_should_umount(new_uid))) {
-            goto do_umount;
-        }
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
         if (current->seccomp.mode == SECCOMP_MODE_FILTER && current->seccomp.filter) {
             ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
@@ -136,26 +123,21 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
 #endif
     }
 
+#ifdef CONFIG_KSU_SUSFS
+    // Check if spawned process is normal user app and needs to be umounted
+    if (likely(is_zygote_normal_app_uid(new_uid) && ksu_uid_should_umount(new_uid))) {
+        goto do_umount;
+    }
+#endif // #ifdef CONFIG_KSU_SUSFS
+
     return 0;
 
 do_umount:
     // Handle kernel umount
-#ifndef CONFIG_KSU_SUSFS_TRY_UMOUNT
     ksu_handle_umount(old_uid, new_uid);
-#else
-    susfs_try_umount(new_uid);
-#endif // #ifndef CONFIG_KSU_SUSFS_TRY_UMOUNT
-
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-    // We can reorder the mnt_id now after all sus mounts are umounted
-    susfs_reorder_mnt_id();
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-    susfs_run_sus_path_loop(new_uid);
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 
 #ifdef CONFIG_KSU_SUSFS
+    queue_work(system_unbound_wq, &susfs_extra_works);
     susfs_set_current_proc_umounted();
 #endif
 

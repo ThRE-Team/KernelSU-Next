@@ -140,14 +140,6 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
             susfs_add_sus_path_loop(arg);
             return 0;
         }
-        if (cmd == CMD_SUSFS_SET_ANDROID_DATA_ROOT_PATH) {
-            susfs_set_i_state_on_external_dir(arg);
-            return 0;
-        }
-        if (cmd == CMD_SUSFS_SET_SDCARD_ROOT_PATH) {
-            susfs_set_i_state_on_external_dir(arg);
-            return 0;
-        }
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
         if (cmd == CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS) {
@@ -169,12 +161,6 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-        if (cmd == CMD_SUSFS_ADD_TRY_UMOUNT) {
-            susfs_add_try_umount(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
         if (cmd == CMD_SUSFS_SET_UNAME) {
             susfs_set_uname(arg);
@@ -205,6 +191,12 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
             return 0;
         }
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
+#ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER
+        if (cmd == CMD_SUSFS_SET_PRIORITY_UID_FILTER) {
+            susfs_set_priority_uid_filter(arg);
+            return 0;
+        }
+#endif // #ifdef CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER
         if (cmd == CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING) {
             susfs_set_avc_log_spoofing(arg);
             return 0;
@@ -370,7 +362,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 	return 0;
 }
 
-#if defined(KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
+#ifdef KSU_KPROBES_HOOK
 static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	struct pt_regs *real_regs = PT_REAL_REGS(regs);
@@ -393,7 +385,7 @@ void __init ksu_supercalls_init(void)
 {
 	ksu_supercall_dump_commands();
 
-#if defined(KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
+#ifdef KSU_KPROBES_HOOK
 	int rc = register_kprobe(&reboot_kp);
 	if (rc) {
 		pr_err("reboot kprobe failed: %d\n", rc);
@@ -404,10 +396,8 @@ void __init ksu_supercalls_init(void)
 }
 
 void __exit ksu_supercalls_exit(void){
-#if defined(KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
+#ifdef KSU_KPROBES_HOOK
 	unregister_kprobe(&reboot_kp);
-#else
-	pr_info("susfs: ksu_supercalls_exit: do nothing\n");
 #endif
 
 	ksu_supercall_cleanup_state();

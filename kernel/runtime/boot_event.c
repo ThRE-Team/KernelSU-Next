@@ -3,6 +3,10 @@
 #include <linux/namei.h>
 #include <linux/printk.h>
 
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#endif // #ifdef CONFIG_KSU_SUSFS
+
 #include "policy/allowlist.h"
 #include "klog.h" // IWYU pragma: keep
 #include "runtime/ksud_boot.h"
@@ -29,6 +33,9 @@ void on_post_fs_data(void)
 
 	ksu_load_allow_list();
 	ksu_observer_init();
+#ifdef CONFIG_KSU_SUSFS
+	susfs_start_sdcard_monitor_fn();
+#endif // #ifdef CONFIG_KSU_SUSFS
 	// sanity check, this may influence the performance
 	stop_input_hook();
 }
