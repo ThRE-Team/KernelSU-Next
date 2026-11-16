@@ -538,7 +538,7 @@ static int do_get_hook_mode(void __user *arg)
 	const char *type = "Kprobes";
 
 #ifndef KSU_KPROBES_HOOK
-    #if defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+    #if defined(CONFIG_KSU_MANUAL_HOOK)
         type = "Silent";
     #else
         type = "Manual";
