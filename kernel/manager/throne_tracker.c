@@ -31,7 +31,7 @@ struct uid_data {
 	char package[KSU_MAX_PACKAGE_NAME];
 };
 
-static void crown_manager(const char *apk, struct list_head *uid_data)
+static bool crown_manager(const char *apk, struct list_head *uid_data)
 {
 	struct list_head *list = (struct list_head *)uid_data;
 	struct uid_data *np;
@@ -51,7 +51,7 @@ static void crown_manager(const char *apk, struct list_head *uid_data)
 
 	if (get_pkg_from_apk_dir_path(pkg, dir_path) < 0) {
 		pr_err("Failed to get package name from apk dir path: %s\n", dir_path);
-		return;
+		return false;
 	}
 	pr_info("manager pkg: %s\n", pkg);
 	target_pkg = pkg;
@@ -61,9 +61,10 @@ static void crown_manager(const char *apk, struct list_head *uid_data)
 		if (strncmp(np->package, target_pkg, KSU_MAX_PACKAGE_NAME) == 0) {
 			pr_info("Crowning manager: %s(uid=%d)\n", target_pkg, np->uid);
 			ksu_set_manager_appid(np->uid);
-			break;
+			return true;
 		}
 	}
+	return false;
 }
 
 struct data_path {
@@ -238,8 +239,8 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 			if (unlikely(!is_manager))
 				goto skip_iterate;
 
+			if (crown_manager(candidate_path, uid_data))
 			stop = 1;
-			crown_manager(candidate_path, uid_data);
 
 		skip_iterate:
 			list_del(&pos->list);
