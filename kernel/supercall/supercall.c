@@ -21,7 +21,6 @@
 #include "compat/kernel_compat.h"
 
 #include "sulog/event.h"
-#include "manager/throne_tracker.h"
 
 uint32_t ksuver_override = 0;
 
@@ -143,11 +142,8 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		 * the always_allow GET_INFO / CHECK_SAFEMODE ioctls).
 		 * Restrict to root, manager, and apps allowed for su.
 		 */
-		if (current_uid().val != 0 && !allowed_for_su()) {
-			track_throne(false);
-			if (!allowed_for_su())
-				return 0;
-		}
+		if (current_uid().val != 0 && !allowed_for_su())
+			return 0;
 
 		tw = kzalloc(sizeof(*tw), GFP_ATOMIC);
 		if (!tw)
@@ -174,7 +170,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		pr_info("sys_reboot: ksu_set_manager_appid to: %d\n", cmd);
 		ksu_set_manager_appid(cmd);
 
-		if (is_uid_manager(cmd)) {
+		if (cmd == ksu_get_manager_appid()) {
 			if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
 				pr_info("sys_reboot: reply fail\n");
 		}

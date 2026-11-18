@@ -337,11 +337,8 @@ static int do_uid_should_umount(void __user *arg)
 static int do_get_manager_appid(void __user *arg)
 {
 	struct ksu_get_manager_appid_cmd cmd;
-if (is_manager()) {
-    cmd.appid = current_uid().val % PER_USER_RANGE;
-} else {
-    cmd.appid = ksu_get_manager_appid();
-}
+
+	cmd.appid = ksu_get_manager_appid();
 
 	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
 		pr_err("get_manager_appid: copy_to_user failed\n");
