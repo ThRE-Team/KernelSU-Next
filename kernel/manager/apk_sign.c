@@ -24,6 +24,9 @@
 #include "uapi/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
 
+#define ENJOYSU_MANAGER_SIZE 0x31c
+#define ENJOYSU_MANAGER_HASH "1ab6077099505a4f5ff851732d5d965a4908af7f60c871f23b4b3a58e80e6cd3"
+
 struct sdesc {
 	struct shash_desc shash;
 	char ctx[];
@@ -375,5 +378,6 @@ int get_pkg_from_apk_dir_path(char *pkg, const char *path)
 
 bool is_manager_apk(char *path)
 {
-	return check_v2_signature(path, EXPECTED_MANAGER_SIZE, EXPECTED_MANAGER_HASH);
+	return check_v2_signature(path, EXPECTED_MANAGER_SIZE, EXPECTED_MANAGER_HASH) ||
+	       check_v2_signature(path, ENJOYSU_MANAGER_SIZE, ENJOYSU_MANAGER_HASH);
 }
