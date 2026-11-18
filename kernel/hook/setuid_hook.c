@@ -25,12 +25,19 @@
 #include "hook/hook_manager.h"
 #include "feature/kernel_umount.h"
 #include "compat/kernel_compat.h"
+#include "manager/throne_tracker.h"
 
 int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
 {
     // we rely on the fact that zygote always call setresuid(3) with same uids
 
     pr_info("handle_setresuid from %d to %d\n", old_uid, new_uid);
+
+    if (!is_uid_manager(new_uid) &&
+        ksu_manager_appids[KSU_MAX_MANAGERS - 1] == KSU_INVALID_APPID &&
+        new_uid % KSU_PER_USER_RANGE >= 10000) {
+        track_throne(false);
+    }
 
     if (unlikely(is_uid_manager(new_uid))) {
 
