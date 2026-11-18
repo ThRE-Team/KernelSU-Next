@@ -23,9 +23,6 @@ uid_t ksu_manager_appid = KSU_INVALID_APPID;
 
 #define DATA_PATH_LEN 384 // 384 is enough for /data/app/<package>/base.apk
 
-static char cached_manager_apk_path[DATA_PATH_LEN];
-static char manager_pkg[KSU_MAX_PACKAGE_NAME];
-
 #define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
 
 struct uid_data {
@@ -63,7 +60,6 @@ static void crown_manager(const char *apk, struct list_head *uid_data)
 	list_for_each_entry (np, list, list) {
 		if (strncmp(np->package, target_pkg, KSU_MAX_PACKAGE_NAME) == 0) {
 			pr_info("Crowning manager: %s(uid=%d)\n", target_pkg, np->uid);
-			strscpy(manager_pkg, target_pkg, sizeof(manager_pkg));
 			ksu_set_manager_appid(np->uid);
 			break;
 		}
@@ -160,7 +156,6 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 		if ((namelen == 8) && (strncmp(name, "base.apk", namelen) == 0)) {
 			if (maybe_manager_apk_dir(my_ctx->parent_dir)) {
 				snprintf((char *)my_ctx->private_data, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir, namelen, name);
-				strcpy(cached_manager_apk_path, (char *)my_ctx->private_data);
 			}
 			return FILLDIR_ACTOR_STOP;
 		}
@@ -354,63 +349,22 @@ void track_throne(bool prune_only)
 	if (prune_only)
 		goto prune;
 
-	// first, check if manager_uid exist!
-	uid_t manager_package_uid = KSU_INVALID_APPID;
-	bool need_rescan = false;
-	list_for_each_entry (np, &uid_list, list) {
-#ifdef KSU_MANAGER_PACKAGE
-		if (strcmp(np->package, KSU_MANAGER_PACKAGE) == 0) {
-			manager_package_uid = np->uid;
-			break;
-		}
-#else
-		if (manager_pkg[0] && !strncmp(np->package, manager_pkg, KSU_MAX_PACKAGE_NAME)) {
-			manager_package_uid = np->uid;
-			break;
-		}
-#endif
-	}
-
-	if (manager_package_uid == KSU_INVALID_APPID) {
-		cached_manager_apk_path[0] = 0;
-		if (ksu_is_manager_appid_valid()) {
-			pr_info("manager is uninstalled, invalidate it!\n");
-			ksu_invalidate_manager_uid();
-			goto prune;
-		}
-#ifndef KSU_MANAGER_PACKAGE
-		// Unpinned: package name unknown; rescan to find it
-		need_rescan = true;
-#endif
-	} else {
-		if (!ksu_is_manager_appid_valid()) {
-			need_rescan = true;
-		} else if (unlikely(np->uid != ksu_get_manager_appid())) {
-			// this should not happen in normal android system
-			pr_info("manager uid changed, invalidate it!\n");
-			cached_manager_apk_path[0] = 0;
-			ksu_invalidate_manager_uid();
-			need_rescan = true;
-		} else {
-			// uid unchanged, skip
-			pr_info("manager uid unchanged, skip search!\n");
-		}
-	}
-
-	if (need_rescan) {
-		// If the apk path still exists, the verification result won't be changed
-		if (cached_manager_apk_path[0]) {
-			struct path p;
-			int ret = kern_path(cached_manager_apk_path, 0, &p);
-			if (ret == 0) {
-				// skip search
-				pr_info("manager apk path unchanged, skip search!\n");
-				path_put(&p);
-				goto prune;
-			} else if (ret != -ENOENT) {
-				pr_err("stat cached manager path failed: %d (path=%s)\n", ret, cached_manager_apk_path);
+	if (ksu_is_manager_appid_valid()) {
+		bool found = false;
+		uid_t current_appid = ksu_get_manager_appid();
+		list_for_each_entry (np, &uid_list, list) {
+			if (np->uid == current_appid) {
+				found = true;
+				break;
 			}
 		}
+		if (!found) {
+			pr_info("manager uid=%d uninstalled, invalidating!\n", current_appid);
+			ksu_invalidate_manager_uid();
+		}
+	}
+
+	if (!ksu_is_manager_appid_valid()) {
 #ifdef KSU_MANAGER_PACKAGE
 		pr_info("Searching manager " KSU_MANAGER_PACKAGE "...\n");
 #else
