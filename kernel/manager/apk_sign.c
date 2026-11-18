@@ -21,6 +21,7 @@
 #endif
 
 #include "manager/apk_sign.h"
+#include "manager/manager_list.h"
 #include "uapi/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
 
@@ -375,5 +376,10 @@ int get_pkg_from_apk_dir_path(char *pkg, const char *path)
 
 bool is_manager_apk(char *path)
 {
-	return check_v2_signature(path, EXPECTED_MANAGER_SIZE, EXPECTED_MANAGER_HASH);
+	int i;
+	for (i = 0; i < ARRAY_SIZE(allowed_managers); i++) {
+		if (check_v2_signature(path, allowed_managers[i].sig_size, allowed_managers[i].hash))
+			return true;
+	}
+	return false;
 }
