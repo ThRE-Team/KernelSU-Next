@@ -51,7 +51,7 @@ config KSU_MANUAL_HOOK
 	  
 config KSU_TAMPER_SYSCALL_TABLE
 	bool "tamper sys_call_table for sucompat + sys_reboot"
-	depends on KSU
+	depends on KSU && !KPROBES && !KSU_MANUAL_HOOK
 	depends on ARM64
 	default n
 	help

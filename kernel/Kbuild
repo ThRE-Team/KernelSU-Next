@@ -94,9 +94,9 @@ endif
 # Calculate version if git version is available
 ifdef KSU_GIT_VERSION_VALID
 # ksu_version: major * 30000 + git version for historical reasons
-$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 405))
+$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION) + 555))
 
-NEXT_VERSION := 33405
+NEXT_VERSION := 33555
 NEXT_DIFF := $(shell expr $(KSU_VERSION) - $(NEXT_VERSION))
 NEXT_UAPI_VER := $(shell awk -F'=' '/KERNEL_SU_UAPI_VERSION/ {print $$2; exit}' $(GIT_ROOT)/kernel/uapi/supercall.h | tr -cd '0-9')
 NEXT_COMMIT := $(NEXT_VERSION).$(NEXT_DIFF)-$(NEXT_UAPI_VER)
@@ -106,7 +106,7 @@ ccflags-y += -DKSU_VERSION=$(NEXT_VERSION)
 else
 # If there is no .git directory, use default version
 # $(warning "KSU_GIT_VERSION not defined! It is better to make Next a git repository!")
-KSU_VERSION_FALLBACK := 33405
+KSU_VERSION_FALLBACK := 33555
 $(info --> Next version fallback: $(KSU_VERSION_FALLBACK))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION_FALLBACK)
 endif
