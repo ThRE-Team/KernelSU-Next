@@ -2,6 +2,7 @@ package com.rifsxd.ksunext.ui
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -12,6 +13,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
@@ -26,13 +28,18 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -52,6 +59,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.lifecycleScope
+import java.io.File
 import kotlin.math.abs
 import kotlinx.coroutines.launch
 import com.ramcosta.composedestinations.DestinationsNavHost
@@ -207,6 +215,8 @@ class MainActivity : FragmentActivity() {
     var moduleActionId by mutableStateOf<String?>(null)
     var amoledModeState = mutableStateOf(false)
     var navBarEnabled = mutableStateOf(true)
+    var wallpaperEnabledState = mutableStateOf(false)
+    var wallpaperVersionState = mutableStateOf(0L)
     private val handler = Handler(Looper.getMainLooper())
 
     val moduleViewModel: ModuleViewModel by viewModels()
@@ -238,6 +248,9 @@ class MainActivity : FragmentActivity() {
             val prefsInit = getSharedPreferences("settings", MODE_PRIVATE)
             amoledModeState.value = prefsInit.getBoolean("enable_amoled", false)
             navBarEnabled.value = prefsInit.getBoolean("enable_navbar", true)
+            val bgMode = prefsInit.getString("background_mode", "default")
+            wallpaperVersionState.value = prefsInit.getLong("wallpaper_version", 0L)
+            wallpaperEnabledState.value = bgMode == "wallpaper" && File(filesDir, "custom_wallpaper").exists()
         } catch (_: Exception) {}
 
         val isManager = Natives.isManager
@@ -262,7 +275,10 @@ class MainActivity : FragmentActivity() {
             handleIntent(intent)
 
         setContent { Box(modifier = Modifier.fillMaxSize()) {
-            KernelSUTheme(amoledMode = amoledModeState.value) {
+            KernelSUTheme(
+                amoledMode = amoledModeState.value,
+                hasWallpaper = wallpaperEnabledState.value
+            ) {
                 var showSplash by remember { mutableStateOf(enableStartupAnimation) }
                 var splashRotationTarget by remember { mutableStateOf(0f) }
                 val splashRotation by animateFloatAsState(
@@ -414,6 +430,31 @@ class MainActivity : FragmentActivity() {
                             contentWindowInsets = WindowInsets(0, 0, 0, 0)
                         ) { innerPadding ->
                             Box(modifier = Modifier.fillMaxSize()) {
+                                if (wallpaperEnabledState.value) {
+                                    val wallpaperBitmap = remember(wallpaperVersionState.value) {
+                                        loadSampledWallpaper(File(filesDir, "custom_wallpaper"))
+                                    }
+                                    if (wallpaperBitmap != null) {
+                                        Image(
+                                            bitmap = wallpaperBitmap,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    if (isSystemInDarkTheme()) {
+                                                        Color.Black.copy(alpha = 0.45f)
+                                                    } else {
+                                                        Color.White.copy(alpha = 0.35f)
+                                                    }
+                                                )
+                                        )
+                                    }
+                                }
+
                                 CompositionLocalProvider(
                                     LocalSnackbarHost provides snackBarHostState,
                                     LocalScrollState provides ScrollState(
@@ -640,6 +681,34 @@ class MainActivity : FragmentActivity() {
             prefs.edit().putBoolean("enable_navbar", enabled).apply()
         } catch (_: Exception) {}
         navBarEnabled.value = enabled
+    }
+
+    fun setBackgroundMode(mode: String, version: Long = System.currentTimeMillis()) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit()
+                .putString("background_mode", mode)
+                .putLong("wallpaper_version", version)
+                .apply()
+        } catch (_: Exception) {}
+        wallpaperVersionState.value = version
+        wallpaperEnabledState.value = mode == "wallpaper" && File(filesDir, "custom_wallpaper").exists()
+    }
+
+    private fun loadSampledWallpaper(file: File, maxDim: Int = 2048): ImageBitmap? {
+        if (!file.exists()) return null
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(file.absolutePath, bounds)
+            var sampleSize = 1
+            while (bounds.outWidth / sampleSize > maxDim || bounds.outHeight / sampleSize > maxDim) {
+                sampleSize *= 2
+            }
+            val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     override fun onStart() {

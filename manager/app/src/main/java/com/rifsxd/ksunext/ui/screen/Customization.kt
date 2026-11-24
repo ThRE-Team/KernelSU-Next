@@ -1,6 +1,8 @@
 package com.rifsxd.ksunext.ui.screen
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Dock
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,6 +52,7 @@ import com.rifsxd.ksunext.ui.component.SwitchItem
 import com.rifsxd.ksunext.ui.util.refreshActivity
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.LocaleHelper
+import java.io.File
 
 /**
  * @author rifsxd
@@ -80,11 +84,39 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp
 
     val context = LocalContext.current
+    val activity = context as? MainActivity
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     var currentAppLocale by remember {
         mutableStateOf(LocaleHelper.getCurrentAppLocale(context))
     }
     var showLanguageSheet by remember { mutableStateOf(false) }
+
+    var backgroundMode by rememberSaveable {
+        mutableStateOf(prefs.getString("background_mode", "default") ?: "default")
+    }
+    var showBackgroundSheet by remember { mutableStateOf(false) }
+
+    val wallpaperPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val destFile = File(context.filesDir, "custom_wallpaper")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                val version = System.currentTimeMillis()
+                prefs.edit {
+                    putString("background_mode", "wallpaper")
+                    putLong("wallpaper_version", version)
+                }
+                backgroundMode = "wallpaper"
+                activity?.setBackgroundMode("wallpaper", version)
+            } catch (_: Exception) {}
+        }
+    }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         currentAppLocale = LocaleHelper.getCurrentAppLocale(context)
@@ -168,7 +200,6 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 )
             }
             if (isSystemInDarkTheme()) {
-                val activity = LocalContext.current as? MainActivity
                 SwitchItem(
                     icon = Icons.Filled.Contrast,
                     title = stringResource(id = R.string.settings_amoled_mode),
@@ -180,12 +211,27 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 }
             }
 
+            val backgroundDisplay = if (backgroundMode == "wallpaper") "Wallpaper" else "Default"
+            ListItem(
+                leadingContent = { Icon(Icons.Filled.Wallpaper, contentDescription = "Background") },
+                headlineContent = {
+                    Text(
+                        text = "Background",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                supportingContent = { Text(backgroundDisplay) },
+                modifier = Modifier.clickable {
+                    showBackgroundSheet = true
+                }
+            )
+
             var enableNavBar by rememberSaveable {
                 mutableStateOf(
                     prefs.getBoolean("enable_navbar", true)
                 )
             }
-            val activity = LocalContext.current as? MainActivity
             SwitchItem(
                 icon = Icons.Filled.Dock,
                 title = stringResource(id = R.string.settings_navbar),
@@ -228,6 +274,80 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
             }
         )
     }
+
+    if (showBackgroundSheet) {
+        BackgroundBottomSheet(
+            selectedMode = backgroundMode,
+            onDismiss = { showBackgroundSheet = false },
+            onModeSelected = { mode ->
+                showBackgroundSheet = false
+                if (mode == "default") {
+                    File(context.filesDir, "custom_wallpaper").delete()
+                    prefs.edit { putString("background_mode", "default") }
+                    backgroundMode = "default"
+                    activity?.setBackgroundMode("default")
+                } else {
+                    wallpaperPickerLauncher.launch("image/*")
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BackgroundBottomSheet(
+    selectedMode: String,
+    onDismiss: () -> Unit,
+    onModeSelected: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val options = listOf(
+        "default" to "Default",
+        "wallpaper" to "Wallpaper"
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Text(
+            text = "Background",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+                .semantics { heading() }
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup()
+                .padding(bottom = 24.dp)
+        ) {
+            options.forEach { (mode, label) ->
+                val selected = mode == selectedMode
+                ListItem(
+                    headlineContent = { Text(label) },
+                    trailingContent = {
+                        RadioButton(selected = selected, onClick = null)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = selected,
+                            role = Role.RadioButton,
+                            onClick = { onModeSelected(mode) }
+                        )
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -243,7 +363,7 @@ private fun LanguageBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Text(
             text = stringResource(R.string.select_language),
@@ -269,7 +389,7 @@ private fun LanguageBottomSheet(
                         RadioButton(selected = selected, onClick = null)
                     },
                     colors = ListItemDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
                     modifier = Modifier
                         .fillMaxWidth()

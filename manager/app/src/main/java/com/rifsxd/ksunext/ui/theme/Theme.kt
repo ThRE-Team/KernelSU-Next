@@ -40,9 +40,10 @@ fun KernelSUTheme(
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     amoledMode: Boolean = false,
+    hasWallpaper: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    val baseColorScheme = when {
         amoledMode && darkTheme && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             val dynamicScheme = dynamicDarkColorScheme(context)
@@ -75,6 +76,21 @@ fun KernelSUTheme(
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    val colorScheme = if (hasWallpaper) {
+        baseColorScheme.copy(
+            background = Color.Transparent,
+            surface = baseColorScheme.surface.copy(alpha = 0.80f),
+            surfaceVariant = baseColorScheme.surfaceVariant.copy(alpha = 0.72f),
+            surfaceContainer = baseColorScheme.surfaceContainer.copy(alpha = 0.72f),
+            surfaceContainerLow = baseColorScheme.surfaceContainerLow.copy(alpha = 0.72f),
+            surfaceContainerLowest = baseColorScheme.surfaceContainerLowest.copy(alpha = 0.72f),
+            surfaceContainerHigh = baseColorScheme.surfaceContainerHigh.copy(alpha = 0.82f),
+            surfaceContainerHighest = baseColorScheme.surfaceContainerHighest.copy(alpha = 0.88f)
+        )
+    } else {
+        baseColorScheme
     }
 
     SystemBarStyle(
