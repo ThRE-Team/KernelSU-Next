@@ -1,6 +1,8 @@
 package com.rifsxd.ksunext.ui.screen
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -18,10 +20,15 @@ import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Dock
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -49,6 +56,8 @@ import com.rifsxd.ksunext.ui.component.SwitchItem
 import com.rifsxd.ksunext.ui.util.refreshActivity
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.LocaleHelper
+import java.io.File
+import kotlin.math.roundToInt
 
 /**
  * @author rifsxd
@@ -80,11 +89,49 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp
 
     val context = LocalContext.current
+    val activity = context as? MainActivity
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     var currentAppLocale by remember {
         mutableStateOf(LocaleHelper.getCurrentAppLocale(context))
     }
     var showLanguageSheet by remember { mutableStateOf(false) }
+
+    var backgroundMode by rememberSaveable {
+        mutableStateOf(prefs.getString("background_mode", "default") ?: "default")
+    }
+    var showBackgroundSheet by remember { mutableStateOf(false) }
+
+    var wallpaperOpacity by rememberSaveable {
+        mutableFloatStateOf(prefs.getFloat("wallpaper_opacity", 0.60f))
+    }
+    var cardOpacity by rememberSaveable {
+        mutableFloatStateOf(prefs.getFloat("card_opacity", 0.75f))
+    }
+    var topBarOpacity by rememberSaveable {
+        mutableFloatStateOf(prefs.getFloat("topbar_opacity", 0.80f))
+    }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val destFile = File(context.filesDir, "custom_wallpaper")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                val version = System.currentTimeMillis()
+                prefs.edit {
+                    putString("background_mode", "image")
+                    putLong("wallpaper_version", version)
+                }
+                backgroundMode = "image"
+                activity?.setBackgroundMode("image", version)
+            } catch (_: Exception) {}
+        }
+    }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         currentAppLocale = LocaleHelper.getCurrentAppLocale(context)
@@ -168,7 +215,6 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 )
             }
             if (isSystemInDarkTheme()) {
-                val activity = LocalContext.current as? MainActivity
                 SwitchItem(
                     icon = Icons.Filled.Contrast,
                     title = stringResource(id = R.string.settings_amoled_mode),
@@ -180,12 +226,80 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 }
             }
 
+            val backgroundDisplay = when (backgroundMode) {
+                "wallpaper" -> "Wallpaper"
+                "image" -> "Image"
+                else -> "Default"
+            }
+            ListItem(
+                leadingContent = { Icon(Icons.Filled.Wallpaper, contentDescription = "Background") },
+                headlineContent = {
+                    Text(
+                        text = "Background",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                supportingContent = { Text(backgroundDisplay) },
+                modifier = Modifier.clickable {
+                    showBackgroundSheet = true
+                }
+            )
+
+            if (backgroundMode == "image") {
+                ListItem(
+                    leadingContent = { Icon(Icons.Filled.Image, contentDescription = "Pilih gambar") },
+                    headlineContent = {
+                        Text(
+                            text = "Pilih gambar",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    supportingContent = { Text("Ganti gambar latar belakang dari galeri") },
+                    modifier = Modifier.clickable {
+                        imagePickerLauncher.launch("image/*")
+                    }
+                )
+            }
+
+            if (backgroundMode == "wallpaper" || backgroundMode == "image") {
+                OpacitySliderItem(
+                    icon = Icons.Filled.Opacity,
+                    title = if (backgroundMode == "wallpaper") "Opacity Wallpaper" else "Opacity Gambar",
+                    value = wallpaperOpacity,
+                    onValueChange = { value ->
+                        wallpaperOpacity = value
+                        activity?.setWallpaperOpacity(value)
+                    }
+                )
+
+                OpacitySliderItem(
+                    icon = Icons.Filled.Opacity,
+                    title = "Opacity Card",
+                    value = cardOpacity,
+                    onValueChange = { value ->
+                        cardOpacity = value
+                        activity?.setCardOpacity(value)
+                    }
+                )
+
+                OpacitySliderItem(
+                    icon = Icons.Filled.Opacity,
+                    title = "Opacity Title Bar",
+                    value = topBarOpacity,
+                    onValueChange = { value ->
+                        topBarOpacity = value
+                        activity?.setTopBarOpacity(value)
+                    }
+                )
+            }
+
             var enableNavBar by rememberSaveable {
                 mutableStateOf(
                     prefs.getBoolean("enable_navbar", true)
                 )
             }
-            val activity = LocalContext.current as? MainActivity
             SwitchItem(
                 icon = Icons.Filled.Dock,
                 title = stringResource(id = R.string.settings_navbar),
@@ -228,6 +342,134 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
             }
         )
     }
+
+    if (showBackgroundSheet) {
+        BackgroundBottomSheet(
+            selectedMode = backgroundMode,
+            onDismiss = { showBackgroundSheet = false },
+            onModeSelected = { mode ->
+                showBackgroundSheet = false
+                when (mode) {
+                    "default" -> {
+                        File(context.filesDir, "custom_wallpaper").delete()
+                        prefs.edit { putString("background_mode", "default") }
+                        backgroundMode = "default"
+                        activity?.setBackgroundMode("default")
+                    }
+                    "wallpaper" -> {
+                        prefs.edit { putString("background_mode", "wallpaper") }
+                        backgroundMode = "wallpaper"
+                        activity?.setBackgroundMode("wallpaper")
+                    }
+                    "image" -> {
+                        if (File(context.filesDir, "custom_wallpaper").exists()) {
+                            prefs.edit { putString("background_mode", "image") }
+                            backgroundMode = "image"
+                            activity?.setBackgroundMode("image")
+                        } else {
+                            imagePickerLauncher.launch("image/*")
+                        }
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun OpacitySliderItem(
+    icon: ImageVector,
+    title: String,
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    ListItem(
+        leadingContent = { Icon(icon, contentDescription = title) },
+        headlineContent = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "${(value * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+        supportingContent = {
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = 0f..1f,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BackgroundBottomSheet(
+    selectedMode: String,
+    onDismiss: () -> Unit,
+    onModeSelected: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val options = listOf(
+        "default" to "Default",
+        "wallpaper" to "Wallpaper",
+        "image" to "Image"
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.95f)
+    ) {
+        Text(
+            text = "Background",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+                .semantics { heading() }
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup()
+                .padding(bottom = 24.dp)
+        ) {
+            options.forEach { (mode, label) ->
+                val selected = mode == selectedMode
+                ListItem(
+                    headlineContent = { Text(label) },
+                    trailingContent = {
+                        RadioButton(selected = selected, onClick = null)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = selected,
+                            role = Role.RadioButton,
+                            onClick = { onModeSelected(mode) }
+                        )
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -243,7 +485,7 @@ private fun LanguageBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.95f)
     ) {
         Text(
             text = stringResource(R.string.select_language),
@@ -269,7 +511,7 @@ private fun LanguageBottomSheet(
                         RadioButton(selected = selected, onClick = null)
                     },
                     colors = ListItemDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0f)
                     ),
                     modifier = Modifier
                         .fillMaxWidth()

@@ -2,16 +2,20 @@ package com.rifsxd.ksunext.ui
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
@@ -26,13 +30,18 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -52,6 +61,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.lifecycleScope
+import java.io.File
 import kotlin.math.abs
 import kotlinx.coroutines.launch
 import com.ramcosta.composedestinations.DestinationsNavHost
@@ -207,6 +217,11 @@ class MainActivity : FragmentActivity() {
     var moduleActionId by mutableStateOf<String?>(null)
     var amoledModeState = mutableStateOf(false)
     var navBarEnabled = mutableStateOf(true)
+    var backgroundModeState = mutableStateOf("default")
+    var wallpaperVersionState = mutableStateOf(0L)
+    var wallpaperOpacityState = mutableStateOf(0.60f)
+    var cardOpacityState = mutableStateOf(0.75f)
+    var topBarOpacityState = mutableStateOf(0.80f)
     private val handler = Handler(Looper.getMainLooper())
 
     val moduleViewModel: ModuleViewModel by viewModels()
@@ -238,6 +253,13 @@ class MainActivity : FragmentActivity() {
             val prefsInit = getSharedPreferences("settings", MODE_PRIVATE)
             amoledModeState.value = prefsInit.getBoolean("enable_amoled", false)
             navBarEnabled.value = prefsInit.getBoolean("enable_navbar", true)
+            val savedMode = prefsInit.getString("background_mode", "default") ?: "default"
+            backgroundModeState.value = savedMode
+            wallpaperVersionState.value = prefsInit.getLong("wallpaper_version", 0L)
+            wallpaperOpacityState.value = prefsInit.getFloat("wallpaper_opacity", 0.60f)
+            cardOpacityState.value = prefsInit.getFloat("card_opacity", 0.75f)
+            topBarOpacityState.value = prefsInit.getFloat("topbar_opacity", 0.80f)
+            applyWindowWallpaperFlag(savedMode)
         } catch (_: Exception) {}
 
         val isManager = Natives.isManager
@@ -262,7 +284,18 @@ class MainActivity : FragmentActivity() {
             handleIntent(intent)
 
         setContent { Box(modifier = Modifier.fillMaxSize()) {
-            KernelSUTheme(amoledMode = amoledModeState.value) {
+            val hasCustomBg = when (backgroundModeState.value) {
+                "wallpaper" -> true
+                "image" -> File(filesDir, "custom_wallpaper").exists()
+                else -> false
+            }
+
+            KernelSUTheme(
+                amoledMode = amoledModeState.value,
+                hasCustomBg = hasCustomBg,
+                cardOpacity = cardOpacityState.value,
+                topBarOpacity = topBarOpacityState.value
+            ) {
                 var showSplash by remember { mutableStateOf(enableStartupAnimation) }
                 var splashRotationTarget by remember { mutableStateOf(0f) }
                 val splashRotation by animateFloatAsState(
@@ -292,7 +325,13 @@ class MainActivity : FragmentActivity() {
                 ) { isSplashVisible ->
                     if (isSplashVisible) {
                         Box(
-                            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    if (amoledModeState.value && isSystemInDarkTheme()) Color.Black
+                                    else if (isSystemInDarkTheme()) Color(0xFF121212)
+                                    else Color.White
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
@@ -414,6 +453,34 @@ class MainActivity : FragmentActivity() {
                             contentWindowInsets = WindowInsets(0, 0, 0, 0)
                         ) { innerPadding ->
                             Box(modifier = Modifier.fillMaxSize()) {
+                                if (hasCustomBg) {
+                                    if (backgroundModeState.value == "image") {
+                                        val wallpaperBitmap = remember(wallpaperVersionState.value) {
+                                            loadSampledWallpaper(File(filesDir, "custom_wallpaper"))
+                                        }
+                                        if (wallpaperBitmap != null) {
+                                            Image(
+                                                bitmap = wallpaperBitmap,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        }
+                                    }
+
+                                    val scrimBaseColor = when {
+                                        amoledModeState.value && isSystemInDarkTheme() -> Color.Black
+                                        isSystemInDarkTheme() -> Color(0xFF121212)
+                                        else -> Color.White
+                                    }
+                                    val dimAlpha = 1f - wallpaperOpacityState.value.coerceIn(0f, 1f)
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(scrimBaseColor.copy(alpha = dimAlpha))
+                                    )
+                                }
+
                                 CompositionLocalProvider(
                                     LocalSnackbarHost provides snackBarHostState,
                                     LocalScrollState provides ScrollState(
@@ -626,6 +693,15 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    private fun applyWindowWallpaperFlag(mode: String) {
+        if (mode == "wallpaper") {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        }
+    }
+
     fun setAmoledMode(enabled: Boolean) {
         try {
             val prefs = getSharedPreferences("settings", MODE_PRIVATE)
@@ -640,6 +716,62 @@ class MainActivity : FragmentActivity() {
             prefs.edit().putBoolean("enable_navbar", enabled).apply()
         } catch (_: Exception) {}
         navBarEnabled.value = enabled
+    }
+
+    fun setBackgroundMode(mode: String, version: Long = System.currentTimeMillis()) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit()
+                .putString("background_mode", mode)
+                .putLong("wallpaper_version", version)
+                .apply()
+        } catch (_: Exception) {}
+        wallpaperVersionState.value = version
+        backgroundModeState.value = mode
+        applyWindowWallpaperFlag(mode)
+    }
+
+    fun setWallpaperOpacity(opacity: Float) {
+        val clamped = opacity.coerceIn(0f, 1f)
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putFloat("wallpaper_opacity", clamped).apply()
+        } catch (_: Exception) {}
+        wallpaperOpacityState.value = clamped
+    }
+
+    fun setCardOpacity(opacity: Float) {
+        val clamped = opacity.coerceIn(0f, 1f)
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putFloat("card_opacity", clamped).apply()
+        } catch (_: Exception) {}
+        cardOpacityState.value = clamped
+    }
+
+    fun setTopBarOpacity(opacity: Float) {
+        val clamped = opacity.coerceIn(0f, 1f)
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putFloat("topbar_opacity", clamped).apply()
+        } catch (_: Exception) {}
+        topBarOpacityState.value = clamped
+    }
+
+    private fun loadSampledWallpaper(file: File, maxDim: Int = 2048): ImageBitmap? {
+        if (!file.exists()) return null
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(file.absolutePath, bounds)
+            var sampleSize = 1
+            while (bounds.outWidth / sampleSize > maxDim || bounds.outHeight / sampleSize > maxDim) {
+                sampleSize *= 2
+            }
+            val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     override fun onStart() {

@@ -40,9 +40,12 @@ fun KernelSUTheme(
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     amoledMode: Boolean = false,
+    hasCustomBg: Boolean = false,
+    cardOpacity: Float = 0.75f,
+    topBarOpacity: Float = 0.80f,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    val baseColorScheme = when {
         amoledMode && darkTheme && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             val dynamicScheme = dynamicDarkColorScheme(context)
@@ -75,6 +78,26 @@ fun KernelSUTheme(
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    val colorScheme = if (hasCustomBg) {
+        val cAlpha = cardOpacity.coerceIn(0f, 1f)
+        val tAlpha = topBarOpacity.coerceIn(0f, 1f)
+        baseColorScheme.copy(
+            background = Color.Transparent,
+            surface = baseColorScheme.surface.copy(alpha = tAlpha),
+            surfaceVariant = baseColorScheme.surfaceVariant.copy(alpha = cAlpha),
+            surfaceContainer = baseColorScheme.surfaceContainer.copy(alpha = cAlpha),
+            surfaceContainerLow = baseColorScheme.surfaceContainerLow.copy(alpha = cAlpha),
+            surfaceContainerLowest = baseColorScheme.surfaceContainerLowest.copy(alpha = cAlpha),
+            surfaceContainerHigh = baseColorScheme.surfaceContainerHigh.copy(alpha = cAlpha),
+            surfaceContainerHighest = baseColorScheme.surfaceContainerHighest.copy(alpha = cAlpha),
+            primaryContainer = baseColorScheme.primaryContainer.copy(alpha = cAlpha),
+            secondaryContainer = baseColorScheme.secondaryContainer.copy(alpha = cAlpha),
+            tertiaryContainer = baseColorScheme.tertiaryContainer.copy(alpha = cAlpha),
+        )
+    } else {
+        baseColorScheme
     }
 
     SystemBarStyle(
