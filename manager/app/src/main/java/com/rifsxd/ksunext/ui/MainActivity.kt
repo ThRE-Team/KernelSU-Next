@@ -222,6 +222,7 @@ class MainActivity : FragmentActivity() {
     var wallpaperOpacityState = mutableStateOf(0.60f)
     var cardOpacityState = mutableStateOf(0.75f)
     var topBarOpacityState = mutableStateOf(0.80f)
+    var homeStyleState = mutableStateOf("default")
     private val handler = Handler(Looper.getMainLooper())
 
     val moduleViewModel: ModuleViewModel by viewModels()
@@ -259,6 +260,7 @@ class MainActivity : FragmentActivity() {
             wallpaperOpacityState.value = prefsInit.getFloat("wallpaper_opacity", 0.60f)
             cardOpacityState.value = prefsInit.getFloat("card_opacity", 0.75f)
             topBarOpacityState.value = prefsInit.getFloat("topbar_opacity", 0.80f)
+            homeStyleState.value = prefsInit.getString("home_style", "default") ?: "default"
             applyWindowWallpaperFlag(savedMode)
         } catch (_: Exception) {}
 
@@ -756,6 +758,14 @@ class MainActivity : FragmentActivity() {
             prefs.edit().putFloat("topbar_opacity", clamped).apply()
         } catch (_: Exception) {}
         topBarOpacityState.value = clamped
+    }
+
+    fun setHomeStyle(style: String) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putString("home_style", style).apply()
+        } catch (_: Exception) {}
+        homeStyleState.value = style
     }
 
     private fun loadSampledWallpaper(file: File, maxDim: Int = 2048): ImageBitmap? {

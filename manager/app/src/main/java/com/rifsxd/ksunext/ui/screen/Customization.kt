@@ -14,14 +14,14 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Animation
-import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material.icons.filled.ViewCarousel
-import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Dock
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,13 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import com.rifsxd.ksunext.ui.LocalNavBarEnabled
-import com.rifsxd.ksunext.ui.LocalScrollState
-import com.rifsxd.ksunext.ui.rememberScrollConnection
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -45,17 +42,20 @@ import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.dropUnlessResumed
-import com.rifsxd.ksunext.ui.MainActivity
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.R
+import com.rifsxd.ksunext.ui.LocalNavBarEnabled
+import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.MainActivity
 import com.rifsxd.ksunext.ui.component.SwitchItem
-import com.rifsxd.ksunext.ui.util.refreshActivity
+import com.rifsxd.ksunext.ui.rememberScrollConnection
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.LocaleHelper
+import com.rifsxd.ksunext.ui.util.refreshActivity
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -68,7 +68,6 @@ import kotlin.math.roundToInt
 @Composable
 fun CustomizationScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    // Bottom bar scroll tracking
     val bottomBarScrollState = LocalScrollState.current
     val bottomBarScrollConnection = if (bottomBarScrollState != null) {
         rememberScrollConnection(
@@ -95,6 +94,11 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
         mutableStateOf(LocaleHelper.getCurrentAppLocale(context))
     }
     var showLanguageSheet by remember { mutableStateOf(false) }
+
+    var homeStyle by rememberSaveable {
+        mutableStateOf(prefs.getString("home_style", "default") ?: "default")
+    }
+    var showHomeStyleSheet by remember { mutableStateOf(false) }
 
     var backgroundMode by rememberSaveable {
         mutableStateOf(prefs.getString("background_mode", "default") ?: "default")
@@ -159,7 +163,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
         snackbarHost = { SnackbarHost(snackBarHost, modifier = Modifier.padding(bottom = navBarPadding)) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
-    
+
         Column(
             modifier = Modifier
                 .padding(paddingValues)
@@ -181,11 +185,13 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
 
             ListItem(
                 leadingContent = { Icon(Icons.Filled.Translate, language) },
-                headlineContent = { Text(
-                    text = language,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                ) },
+                headlineContent = {
+                    Text(
+                        text = language,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
                 supportingContent = { Text(currentLanguageDisplay) },
                 modifier = Modifier.clickable {
                     showLanguageSheet = true
@@ -226,6 +232,25 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 }
             }
 
+            val homeStyleDisplay = when (homeStyle) {
+                "next_manager" -> "Next Manager"
+                else -> "Default (KernelSU Next)"
+            }
+            ListItem(
+                leadingContent = { Icon(Icons.Filled.Dashboard, contentDescription = "Home Layout") },
+                headlineContent = {
+                    Text(
+                        text = "Home Layout",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                supportingContent = { Text(homeStyleDisplay) },
+                modifier = Modifier.clickable {
+                    showHomeStyleSheet = true
+                }
+            )
+
             val backgroundDisplay = when (backgroundMode) {
                 "wallpaper" -> "Wallpaper"
                 "image" -> "Image"
@@ -248,15 +273,15 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
 
             if (backgroundMode == "image") {
                 ListItem(
-                    leadingContent = { Icon(Icons.Filled.Image, contentDescription = "Pilih gambar") },
+                    leadingContent = { Icon(Icons.Filled.Image, contentDescription = "Select image") },
                     headlineContent = {
                         Text(
-                            text = "Pilih gambar",
+                            text = "Select image",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
                     },
-                    supportingContent = { Text("Ganti gambar latar belakang dari galeri") },
+                    supportingContent = { Text("Choose a background image from gallery") },
                     modifier = Modifier.clickable {
                         imagePickerLauncher.launch("image/*")
                     }
@@ -266,7 +291,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
             if (backgroundMode == "wallpaper" || backgroundMode == "image") {
                 OpacitySliderItem(
                     icon = Icons.Filled.Opacity,
-                    title = if (backgroundMode == "wallpaper") "Opacity Wallpaper" else "Opacity Gambar",
+                    title = if (backgroundMode == "wallpaper") "Wallpaper Opacity" else "Image Opacity",
                     value = wallpaperOpacity,
                     onValueChange = { value ->
                         wallpaperOpacity = value
@@ -276,7 +301,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
 
                 OpacitySliderItem(
                     icon = Icons.Filled.Opacity,
-                    title = "Opacity Card",
+                    title = "Card Opacity",
                     value = cardOpacity,
                     onValueChange = { value ->
                         cardOpacity = value
@@ -286,7 +311,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
 
                 OpacitySliderItem(
                     icon = Icons.Filled.Opacity,
-                    title = "Opacity Title Bar",
+                    title = "Title Bar Opacity",
                     value = topBarOpacity,
                     onValueChange = { value ->
                         topBarOpacity = value
@@ -323,6 +348,19 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 enableStartupAnimation = checked
             }
         }
+    }
+
+    if (showHomeStyleSheet) {
+        HomeStyleBottomSheet(
+            selectedStyle = homeStyle,
+            onDismiss = { showHomeStyleSheet = false },
+            onStyleSelected = { style ->
+                showHomeStyleSheet = false
+                prefs.edit { putString("home_style", style) }
+                homeStyle = style
+                activity?.setHomeStyle(style)
+            }
+        )
     }
 
     if (showLanguageSheet) {
@@ -373,6 +411,62 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeStyleBottomSheet(
+    selectedStyle: String,
+    onDismiss: () -> Unit,
+    onStyleSelected: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val options = listOf(
+        "default" to "Default (KernelSU Next)",
+        "next_manager" to "Next Manager"
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.95f)
+    ) {
+        Text(
+            text = "Home Layout",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+                .semantics { heading() }
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup()
+                .padding(bottom = 24.dp)
+        ) {
+            options.forEach { (style, label) ->
+                val selected = style == selectedStyle
+                ListItem(
+                    headlineContent = { Text(label) },
+                    trailingContent = {
+                        RadioButton(selected = selected, onClick = null)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = selected,
+                            role = Role.RadioButton,
+                            onClick = { onStyleSelected(style) }
+                        )
+                )
+            }
+        }
     }
 }
 
@@ -533,11 +627,14 @@ private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     TopAppBar(
-        title = { Text(
+        title = {
+            Text(
                 text = stringResource(R.string.customization),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
-            ) }, navigationIcon = {
+            )
+        },
+        navigationIcon = {
             IconButton(
                 onClick = onBack
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
