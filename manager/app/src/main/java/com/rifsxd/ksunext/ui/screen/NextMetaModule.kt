@@ -1,0 +1,948 @@
+package com.rifsxd.ksunext.ui.screen
+
+import android.app.Activity.RESULT_OK
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Wysiwyg
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.core.net.toUri
+import androidx.lifecycle.compose.dropUnlessResumed
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.dergoogler.mmrl.ui.component.LabelItem
+import com.dergoogler.mmrl.ui.component.LabelItemDefaults
+import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import com.rifsxd.ksunext.Natives
+import com.rifsxd.ksunext.R
+import com.rifsxd.ksunext.ksuApp
+import com.rifsxd.ksunext.ui.component.ConfirmResult
+import com.rifsxd.ksunext.ui.component.ShortcutDialog
+import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
+import com.rifsxd.ksunext.ui.component.rememberLoadingDialog
+import com.rifsxd.ksunext.ui.util.*
+import com.rifsxd.ksunext.ui.util.module.Shortcut
+import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
+import com.rifsxd.ksunext.ui.webui.WebUIActivity
+import com.topjohnwu.superuser.io.SuFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NextMetaModuleScreen(navigator: DestinationsNavigator) {
+    val viewModel = viewModel<ModuleViewModel>()
+    val context = LocalContext.current
+    val snackBarHost = LocalSnackbarHost.current
+    val cardBorder = rememberNextBorder()
+
+    LaunchedEffect(Unit) {
+        if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
+            viewModel.fetchModuleList()
+        }
+    }
+
+    val hasMagisk = hasMagisk()
+    val hideInstallButton = hasMagisk
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+
+    val webUILauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { viewModel.fetchModuleList() }
+
+    val selectZipLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@rememberLauncherForActivityResult
+        val data = result.data ?: return@rememberLauncherForActivityResult
+        val clipData = data.clipData
+
+        val uris = mutableListOf<Uri>()
+        if (clipData != null) {
+            for (i in 0 until clipData.itemCount) {
+                clipData.getItemAt(i)?.uri?.let { uris.add(it) }
+            }
+        } else {
+            data.data?.let { uris.add(it) }
+        }
+
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+
+        if (uris.size == 1 && ZipUtils.isAnyKernel3Zip(context, uris.first())) {
+            navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(uris.first())))
+            return@rememberLauncherForActivityResult
+        }
+
+        viewModel.updateZipUris(uris)
+        navigator.navigate(FlashScreenDestination(FlashIt.FlashModules(uris)))
+        viewModel.clearZipUris()
+        viewModel.markNeedRefresh()
+    }
+
+    Scaffold(
+        topBar = {
+            NextSimpleTopBar(
+                title = stringResource(R.string.meta_module_screen),
+                pillBorder = cardBorder,
+                onBack = dropUnlessResumed { navigator.popBackStack() },
+                actions = {
+                    if (!hideInstallButton) {
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                    type = "application/zip"
+                                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                                }
+                                selectZipLauncher.launch(intent)
+                            },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = stringResource(id = R.string.module_install),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        },
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        snackbarHost = { SnackbarHost(hostState = snackBarHost) }
+    ) { innerPadding ->
+        when {
+            hasMagisk -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.module_magisk_conflict),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            else -> {
+                NextMetaModuleList(
+                    navigator = navigator,
+                    viewModel = viewModel,
+                    cardBorder = cardBorder,
+                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    boxModifier = Modifier.padding(innerPadding),
+                    onInstallModule = {
+                        navigator.navigate(FlashScreenDestination(FlashIt.FlashModules(listOf(it))))
+                    },
+                    onClickModule = { id, name, hasWebUi ->
+                        if (hasWebUi) {
+                            webUILauncher.launch(
+                                Intent(context, WebUIActivity::class.java).apply {
+                                    putExtra("is_internal_transition", true)
+                                    setData("kernelsu://webui/$id".toUri())
+                                    putExtra("id", id)
+                                    putExtra("name", name)
+                                }
+                            )
+                        }
+                    },
+                    context = context,
+                    snackBarHost = snackBarHost
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NextMetaModuleList(
+    navigator: DestinationsNavigator,
+    viewModel: ModuleViewModel,
+    cardBorder: BorderStroke?,
+    modifier: Modifier = Modifier,
+    boxModifier: Modifier = Modifier,
+    onInstallModule: (Uri) -> Unit,
+    onClickModule: (id: String, name: String, hasWebUi: Boolean) -> Unit,
+    context: Context,
+    snackBarHost: SnackbarHostState
+) {
+    val failedEnable = stringResource(R.string.module_failed_to_enable)
+    val failedDisable = stringResource(R.string.module_failed_to_disable)
+    val failedUninstall = stringResource(R.string.module_uninstall_failed)
+    val failedRestore = stringResource(R.string.module_restore_failed)
+    val successUninstall = stringResource(R.string.module_uninstall_success)
+    val successRestore = stringResource(R.string.module_restore_success)
+    val reboot = stringResource(R.string.reboot)
+    val rebootToApply = stringResource(R.string.reboot_to_apply)
+    val moduleStr = stringResource(R.string.module)
+    val uninstall = stringResource(R.string.uninstall)
+    val restore = stringResource(R.string.restore)
+    val cancel = stringResource(android.R.string.cancel)
+    val moduleUninstallConfirm = stringResource(R.string.module_uninstall_confirm)
+    val moduleRestoreConfirm = stringResource(R.string.module_restore_confirm)
+    val updateText = stringResource(R.string.module_update)
+    val changelogText = stringResource(R.string.module_changelog)
+    val downloadingText = stringResource(R.string.module_downloading)
+    val startDownloadingText = stringResource(R.string.module_start_downloading)
+    val fetchChangeLogFailed = stringResource(R.string.module_changelog_failed)
+
+    val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+    val softRebootAfterModuleFlash = prefs.getBoolean("soft_reboot_after_module_flash", false)
+
+    val loadingDialog = rememberLoadingDialog()
+    val confirmDialog = rememberConfirmDialog()
+    var expandedModuleId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val metaModules = remember(viewModel.moduleList) {
+        viewModel.moduleList.filter { it.isMetaModule }
+    }
+
+    suspend fun onModuleUpdate(
+        module: ModuleViewModel.ModuleInfo,
+        changelogUrl: String,
+        downloadUrl: String,
+        fileName: String,
+    ) {
+        val changelogResult = loadingDialog.withLoading {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    ksuApp.okhttpClient.newCall(
+                        okhttp3.Request.Builder().url(changelogUrl).build()
+                    ).execute().body!!.string()
+                }
+            }
+        }
+
+        val showToast: suspend (String) -> Unit = { msg ->
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        val changelog = changelogResult.getOrElse {
+            showToast(fetchChangeLogFailed.format(it.message))
+            return
+        }.ifBlank {
+            showToast(fetchChangeLogFailed.format(module.name))
+            return
+        }
+
+        val confirmResult = confirmDialog.awaitConfirm(
+            changelogText,
+            content = changelog,
+            markdown = true,
+            confirm = updateText,
+        )
+
+        if (confirmResult != ConfirmResult.Confirmed) return
+
+        showToast(startDownloadingText.format(module.name))
+        val downloading = downloadingText.format(module.name)
+        withContext(Dispatchers.IO) {
+            download(
+                context,
+                downloadUrl,
+                fileName,
+                downloading,
+                onDownloaded = onInstallModule,
+                onDownloading = {
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(context, downloading, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
+    }
+
+    suspend fun onModuleUninstall(module: ModuleViewModel.ModuleInfo) {
+        val confirmResult = confirmDialog.awaitConfirm(
+            moduleStr,
+            content = moduleUninstallConfirm.format(module.name),
+            confirm = uninstall,
+            dismiss = cancel
+        )
+        if (confirmResult != ConfirmResult.Confirmed) return
+
+        val success = withContext(Dispatchers.IO) { uninstallModule(module.id) }
+        if (success) viewModel.fetchModuleList()
+
+        val message = if (success) successUninstall.format(module.name) else failedUninstall.format(module.name)
+        val result = snackBarHost.showSnackbar(
+            message = message,
+            actionLabel = if (success) reboot else null,
+            duration = SnackbarDuration.Long
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            reboot(if (softRebootAfterModuleFlash) "soft-reboot" else "")
+        }
+    }
+
+    suspend fun onModuleRestore(module: ModuleViewModel.ModuleInfo) {
+        val confirmResult = confirmDialog.awaitConfirm(
+            moduleStr,
+            content = moduleRestoreConfirm.format(module.name),
+            confirm = restore,
+            dismiss = cancel
+        )
+        if (confirmResult != ConfirmResult.Confirmed) return
+
+        val success = withContext(Dispatchers.IO) { restoreModule(module.id) }
+        if (success) {
+            viewModel.fetchModuleList()
+            snackBarHost.showSnackbar(successRestore.format(module.name))
+        } else {
+            snackBarHost.showSnackbar(failedRestore.format(module.name))
+        }
+    }
+
+    val haptic = LocalHapticFeedback.current
+    val listState = rememberLazyListState()
+
+    PullToRefreshBox(
+        modifier = boxModifier,
+        isRefreshing = viewModel.isRefreshing,
+        onRefresh = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            viewModel.fetchModuleList()
+        }
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 12.dp,
+                end = 16.dp,
+                bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            )
+        ) {
+            when {
+                metaModules.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.meta_module_empty),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    items(metaModules, key = { it.id }) { module ->
+                        val scope = rememberCoroutineScope()
+                        val updatedModule by produceState(key1 = module.id, initialValue = Triple("", "", "")) {
+                            value = withContext(Dispatchers.IO) {
+                                viewModel.checkUpdate(module)
+                            }
+                        }
+
+                        NextMetaModuleItem(
+                            navigator = navigator,
+                            module = module,
+                            updateUrl = updatedModule.first,
+                            border = cardBorder,
+                            onUninstall = { scope.launch { onModuleUninstall(module) } },
+                            onRestore = { scope.launch { onModuleRestore(module) } },
+                            onCheckChanged = {
+                                scope.launch {
+                                    val success = withContext(Dispatchers.IO) {
+                                        toggleModule(module.id, !module.enabled)
+                                    }
+                                    if (success) {
+                                        viewModel.fetchModuleList()
+                                        val result = snackBarHost.showSnackbar(
+                                            message = rebootToApply,
+                                            actionLabel = reboot,
+                                            duration = SnackbarDuration.Long
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            reboot(if (softRebootAfterModuleFlash) "soft-reboot" else "")
+                                        }
+                                    } else {
+                                        val message = if (module.enabled) failedDisable else failedEnable
+                                        snackBarHost.showSnackbar(message.format(module.name))
+                                    }
+                                }
+                            },
+                            onUpdate = {
+                                scope.launch {
+                                    onModuleUpdate(
+                                        module,
+                                        updatedModule.third,
+                                        updatedModule.first,
+                                        "${module.name}-${updatedModule.second}.zip"
+                                    )
+                                    viewModel.markNeedRefresh()
+                                }
+                            },
+                            onClick = { onClickModule(it.id, it.name, it.hasWebUi) },
+                            expanded = if (developerOptionsEnabled) true else expandedModuleId == module.id,
+                            onExpandToggle = {
+                                if (!developerOptionsEnabled) {
+                                    expandedModuleId = if (expandedModuleId == module.id) null else module.id
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        DownloadListener(context, onInstallModule)
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun NextMetaModuleItem(
+    navigator: DestinationsNavigator,
+    module: ModuleViewModel.ModuleInfo,
+    updateUrl: String,
+    border: BorderStroke?,
+    onUninstall: (ModuleViewModel.ModuleInfo) -> Unit,
+    onRestore: (ModuleViewModel.ModuleInfo) -> Unit,
+    onCheckChanged: (Boolean) -> Unit,
+    onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
+    onClick: (ModuleViewModel.ModuleInfo) -> Unit,
+    expanded: Boolean,
+    onExpandToggle: () -> Unit,
+) {
+    val viewModel = viewModel<ModuleViewModel>()
+    val haptic = LocalHapticFeedback.current
+    var showMenu by remember { mutableStateOf(false) }
+    var showShortcutDialog by remember { mutableStateOf(false) }
+    var shortcutType by remember { mutableStateOf("") }
+    var dialogInitialIcon by remember { mutableStateOf<String?>(null) }
+
+    fun normalizeIconPath(p: String?): String? {
+        if (p.isNullOrBlank()) return null
+        try {
+            val candidate = "/data/adb/modules/${module.id}/$p"
+            val f = SuFile(candidate)
+            if (f.exists()) return "su://$candidate"
+        } catch (_: Exception) {}
+
+        if (p.startsWith("/")) {
+            try {
+                val f = SuFile(p)
+                if (f.exists()) return "su://$p"
+            } catch (_: Exception) {}
+            return "file://$p"
+        }
+        return p
+    }
+
+    val context = LocalContext.current
+
+    if (showShortcutDialog) {
+        ShortcutDialog(
+            initialName = module.name,
+            initialIconUri = dialogInitialIcon,
+            onDismiss = { showShortcutDialog = false },
+            onConfirm = { name, iconUri ->
+                showShortcutDialog = false
+                if (shortcutType == "action") {
+                    Shortcut.createModuleActionShortcut(context, module.id, name, iconUri)
+                } else if (shortcutType == "webui") {
+                    Shortcut.createModuleWebUiShortcut(context, module.id, name, iconUri)
+                }
+            }
+        )
+    }
+
+    if ((module.hasWebUi || module.hasActionScript) && showMenu) {
+        Dialog(onDismissRequest = { showMenu = false }) {
+            NextCard(
+                cornerRadius = 24.dp,
+                border = border,
+                modifier = Modifier.fillMaxWidth(0.95f)
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text(
+                        text = stringResource(R.string.module_shortcut),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (module.hasWebUi) {
+                            FilledTonalButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    showMenu = false
+                                    shortcutType = "webui"
+                                    dialogInitialIcon = normalizeIconPath(module.webUiIconPath)
+                                    showShortcutDialog = true
+                                },
+                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = Icons.AutoMirrored.Outlined.Wysiwyg,
+                                    contentDescription = null
+                                )
+                                Text(
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    text = stringResource(R.string.create_webui_shortcut),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+
+                        if (module.hasActionScript) {
+                            FilledTonalButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    showMenu = false
+                                    shortcutType = "action"
+                                    dialogInitialIcon = normalizeIconPath(module.actionIconPath)
+                                    showShortcutDialog = true
+                                },
+                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = Icons.Outlined.Terminal,
+                                    contentDescription = null
+                                )
+                                Text(
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    text = stringResource(R.string.create_action_shortcut),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showMenu = false }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    NextCard(
+        cornerRadius = 20.dp,
+        border = border,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .combinedClickable(
+                onClick = onExpandToggle,
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showMenu = true
+                }
+            )
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+            val useBanner = prefs.getBoolean("use_banner", true)
+            val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
+
+            if (useBanner && module.banner.isNotEmpty()) {
+                val isDark = isSystemInDarkTheme()
+                val colorScheme = MaterialTheme.colorScheme
+                val amoledMode = prefs.getBoolean("amoled_mode", false)
+                val isDynamic = colorScheme.primary != colorScheme.secondary
+
+                val fadeColor = when {
+                    amoledMode && isDark -> Color.Black
+                    isDynamic -> colorScheme.surfaceContainer
+                    isDark -> Color(0xFF222222)
+                    else -> Color.White
+                }
+
+                Box(
+                    modifier = Modifier.matchParentSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (module.banner.startsWith("http", true)) {
+                        AsyncImage(
+                            model = module.banner,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            alpha = 0.18f
+                        )
+                    } else {
+                        val bannerData = remember(module.banner) {
+                            runCatching {
+                                SuFile("/data/adb/modules/${module.id}/${module.banner}").newInputStream().use { it.readBytes() }
+                            }.getOrNull() ?: runCatching {
+                                SuFile("/data/adb/modules_update/${module.id}/${module.banner}").newInputStream().use { it.readBytes() }
+                            }.getOrNull()
+                        }
+                        if (bannerData != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(bannerData).build(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                alpha = 0.18f
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        fadeColor.copy(alpha = 0.0f),
+                                        fadeColor.copy(alpha = 0.85f)
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(20.dp, 16.dp, 20.dp, 12.dp)
+            ) {
+                val interactionSource = remember { MutableInteractionSource() }
+                val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+                val filterZygiskModules = Natives.isZygiskEnabled() || !module.zygiskRequired
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    val moduleVersion = stringResource(id = R.string.module_version)
+                    val moduleAuthor = stringResource(id = R.string.module_author)
+                    val moduleId = stringResource(id = R.string.module_id)
+                    val moduleVersionCode = stringResource(id = R.string.module_version_code)
+                    val moduleUpdateJson = stringResource(id = R.string.module_update_json)
+                    val moduleUpdateJsonEmpty = stringResource(id = R.string.module_update_json_empty)
+
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = module.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            textDecoration = textDecoration
+                        )
+                        Text(
+                            text = "$moduleVersion: ${module.version}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textDecoration = textDecoration
+                        )
+                        Text(
+                            text = "$moduleAuthor: ${module.author}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textDecoration = textDecoration
+                        )
+
+                        if (developerOptionsEnabled) {
+                            Text(
+                                text = "$moduleId: ${module.id}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textDecoration = textDecoration
+                            )
+                            Text(
+                                text = "$moduleVersionCode: ${module.versionCode}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textDecoration = textDecoration
+                            )
+                            Text(
+                                text = if (module.updateJson.isNotEmpty()) "$moduleUpdateJson: ${module.updateJson}" else "$moduleUpdateJson: $moduleUpdateJsonEmpty",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textDecoration = textDecoration
+                            )
+                        }
+                    }
+
+                    Switch(
+                        enabled = !module.update && !module.remove,
+                        checked = module.enabled,
+                        onCheckedChange = onCheckChanged,
+                        interactionSource = if (!module.hasWebUi) interactionSource else null
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = module.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 3,
+                    textDecoration = textDecoration
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    LabelItem(text = formatSize(module.size))
+                    if (module.remove) {
+                        LabelItem(
+                            text = stringResource(R.string.uninstalled),
+                            style = LabelItemDefaults.style.copy(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        )
+                    }
+                    if (module.isMetaModule && !module.remove) {
+                        LabelItem(
+                            text = stringResource(R.string.meta_module),
+                            style = LabelItemDefaults.style.copy(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        )
+                    }
+                    if (module.enabled && !module.remove) {
+                        if (module.hasWebUi && filterZygiskModules) {
+                            LabelItem(
+                                text = stringResource(R.string.webui),
+                                style = LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            )
+                        }
+                        if (module.hasActionScript && filterZygiskModules) {
+                            LabelItem(
+                                text = stringResource(R.string.action),
+                                style = LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            )
+                        }
+                    }
+                    if (updateUrl.isNotEmpty() && !module.remove && !module.update) {
+                        LabelItem(
+                            text = stringResource(R.string.module_update_available),
+                            style = LabelItemDefaults.style.copy(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        )
+                    }
+                    if (!module.remove && module.update) {
+                        LabelItem(
+                            text = stringResource(R.string.module_updated),
+                            style = LabelItemDefaults.style.copy(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        )
+                    }
+                }
+
+                if (expanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                AnimatedVisibility(
+                    visible = expanded,
+                    enter = fadeIn() + expandVertically(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (module.hasActionScript) {
+                            FilledTonalButton(
+                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                enabled = !module.remove && module.enabled && filterZygiskModules,
+                                onClick = {
+                                    navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
+                                    viewModel.markNeedRefresh()
+                                },
+                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = Icons.Outlined.Terminal,
+                                    contentDescription = null
+                                )
+                                if (!module.hasWebUi && updateUrl.isEmpty()) {
+                                    Text(
+                                        modifier = Modifier.padding(start = 7.dp),
+                                        text = stringResource(R.string.action),
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.weight(0.1f, true))
+                        }
+
+                        if (module.hasWebUi) {
+                            FilledTonalButton(
+                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                enabled = !module.remove && module.enabled && filterZygiskModules,
+                                onClick = { onClick(module) },
+                                interactionSource = interactionSource,
+                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = Icons.AutoMirrored.Outlined.Wysiwyg,
+                                    contentDescription = null
+                                )
+                                if (!module.hasActionScript && updateUrl.isEmpty()) {
+                                    Text(
+                                        modifier = Modifier.padding(start = 7.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        text = stringResource(R.string.open)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.weight(0.1f, true))
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f, true))
+
+                        if (updateUrl.isNotEmpty() && !module.remove && !module.update) {
+                            Button(
+                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                enabled = !module.remove,
+                                onClick = { onUpdate(module) },
+                                shape = ButtonDefaults.textShape,
+                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = Icons.Outlined.Download,
+                                    contentDescription = null
+                                )
+                                if (!module.hasActionScript || !module.hasWebUi) {
+                                    Text(
+                                        modifier = Modifier.padding(start = 7.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        text = stringResource(R.string.module_update)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.weight(0.1f, true))
+                        }
+
+                        if (module.remove) {
+                            FilledTonalButton(
+                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                onClick = { onRestore(module) },
+                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = Icons.Outlined.Restore,
+                                    contentDescription = null
+                                )
+                                if (!module.hasActionScript && !module.hasWebUi && updateUrl.isEmpty()) {
+                                    Text(
+                                        modifier = Modifier.padding(start = 7.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        text = stringResource(R.string.restore)
+                                    )
+                                }
+                            }
+                        } else {
+                            FilledTonalButton(
+                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                enabled = true,
+                                onClick = { onUninstall(module) },
+                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = Icons.Outlined.Delete,
+                                    contentDescription = null
+                                )
+                                if (!module.hasActionScript && !module.hasWebUi && updateUrl.isEmpty()) {
+                                    Text(
+                                        modifier = Modifier.padding(start = 7.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        text = stringResource(R.string.uninstall)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
