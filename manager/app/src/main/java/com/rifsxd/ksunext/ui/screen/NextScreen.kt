@@ -2,6 +2,7 @@ package com.rifsxd.ksunext.ui.screen
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.os.PowerManager
 import android.widget.Toast
@@ -30,14 +31,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.MoodBad
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -57,6 +56,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -88,6 +88,22 @@ private val GeminiBlue = Color(0xFF4285F4)
 private val GeminiPurple = Color(0xFF9B72CB)
 private val GeminiPink = Color(0xFFD96570)
 
+@Composable
+private fun rememberNextCardBorder(isCustomBg: Boolean): BorderStroke? {
+    if (!isCustomBg) return null
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val brush = remember(primaryColor) {
+        Brush.linearGradient(
+            colors = listOf(
+                primaryColor.copy(alpha = 0.75f),
+                GeminiPurple.copy(alpha = 0.75f),
+                GeminiPink.copy(alpha = 0.65f)
+            )
+        )
+    }
+    return remember(brush) { BorderStroke(1.dp, brush) }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NextScreen(navigator: DestinationsNavigator) {
@@ -104,6 +120,22 @@ fun NextScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+
+    var backgroundMode by remember {
+        mutableStateOf(prefs.getString("background_mode", "default") ?: "default")
+    }
+    DisposableEffect(prefs) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
+            if (key == "background_mode") {
+                backgroundMode = sp.getString("background_mode", "default") ?: "default"
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+    val cardBorder = rememberNextCardBorder(isCustomBg = backgroundMode != "default")
 
     val bottomBarScrollState = LocalScrollState.current
     val navBarEnabled = LocalNavBarEnabled.current
@@ -145,6 +177,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
             NextTopBar(
                 versionSubtitle = managerVersionSubtitle,
                 ksuVersion = ksuVersion,
+                pillBorder = cardBorder,
                 onInstallClick = {
                     navigator.navigate(InstallScreenDestination)
                 },
@@ -190,6 +223,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 lkmMode = lkmMode,
                 ksuVersionTag = ksuVersionTag,
                 hookMode = homeInfo.hookMode,
+                border = cardBorder,
                 onClickInstall = {
                     navigator.navigate(InstallScreenDestination)
                 }
@@ -259,6 +293,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
                         NextSuperuserTile(
+                            border = cardBorder,
                             onClick = {
                                 navigator.navigate(SuperUserScreenDestination) {
                                     popUpTo(NavGraphs.root.startRoute) {
@@ -274,6 +309,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                     Box(modifier = Modifier.weight(1f)) {
                         NextModuleTile(
                             moduleViewModel = moduleViewModel,
+                            border = cardBorder,
                             onClick = {
                                 navigator.navigate(ModuleScreenDestination) {
                                     popUpTo(NavGraphs.root.startRoute) {
@@ -288,11 +324,12 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 }
             }
 
-            // 4. Full-Width Kernel & ABI Card (Moved here)
+            // 4. Full-Width Kernel & ABI Card
             NextKernelWideCard(
                 kernelRelease = "${homeInfo.unameRelease} (${homeInfo.unameMachine})",
                 abiList = Build.SUPPORTED_ABIS.joinToString(", "),
-                uidInfo = if (developerOptionsEnabled) "Manager UID: ${homeInfo.managerAppId}" else null
+                uidInfo = if (developerOptionsEnabled) "Manager UID: ${homeInfo.managerAppId}" else null,
+                border = cardBorder
             )
 
             // 5. Hook Mode & Metamodule (when KSU active)
@@ -318,6 +355,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                     NextSpecTile(
                         label = stringResource(R.string.hook_mode),
                         value = homeInfo.hookMode ?: stringResource(R.string.unavailable),
+                        border = cardBorder,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
@@ -325,6 +363,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                     NextSpecTile(
                         label = stringResource(R.string.home_metamodule_status),
                         value = metaText,
+                        border = cardBorder,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
@@ -343,7 +382,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                             NextSpecTile(
                                 label = stringResource(R.string.home_susfs_version),
                                 value = "${stringResource(R.string.supported)} | ${homeInfo.suSFSVersion ?: stringResource(R.string.unavailable)} (${homeInfo.suSFSVariant ?: stringResource(R.string.unavailable)})",
-                                accentValue = true,
+                                border = cardBorder,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
@@ -359,6 +398,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                             NextSpecTile(
                                 label = stringResource(R.string.zygisk_status),
                                 value = zygiskText,
+                                border = cardBorder,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
@@ -378,6 +418,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 NextSpecTile(
                     label = stringResource(R.string.home_android),
                     value = "Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
+                    border = cardBorder,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -385,6 +426,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 NextSpecTile(
                     label = "SELinux • Seccomp",
                     value = "${stringResource(homeInfo.selinuxStatusRes)} • ${homeInfo.seccompStatus}",
+                    border = cardBorder,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -393,6 +435,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
 
             // 8. Interactive Footer Signature Card (Opens .Term)
             GeminiSignatureCard(
+                border = cardBorder,
                 onClick = {
                     try {
                         val termClass = Class.forName("${context.packageName}.Term")
@@ -413,6 +456,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
 private fun NextTopBar(
     versionSubtitle: String,
     ksuVersion: Int?,
+    pillBorder: BorderStroke?,
     onInstallClick: () -> Unit,
     onSettingsClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null
@@ -448,12 +492,9 @@ private fun NextTopBar(
                 Icon(
                     painter = painterResource(R.drawable.ic_ksu_next),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .graphicsLayer {
-                            rotationZ = rotation
-                        }
+                    modifier = Modifier.graphicsLayer {
+                        rotationZ = rotation
+                    }
                 )
                 Spacer(Modifier.width(10.dp))
                 Column {
@@ -480,10 +521,7 @@ private fun NextTopBar(
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = BorderStroke(
-                    width = 0.75.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                ),
+                border = pillBorder,
                 modifier = Modifier.padding(end = 8.dp)
             ) {
                 Row(
@@ -548,6 +586,10 @@ private fun NextTopBar(
                 }
             }
         },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent
+        ),
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         scrollBehavior = scrollBehavior
     )
@@ -561,22 +603,15 @@ private fun NextHeroStatusCard(
     lkmMode: Boolean?,
     ksuVersionTag: String?,
     hookMode: String?,
+    border: BorderStroke?,
     onClickInstall: () -> Unit
 ) {
-    val geminiBorderBrush = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-            GeminiPurple.copy(alpha = 0.75f),
-            GeminiPink.copy(alpha = 0.65f)
-        )
-    )
-
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(1.dp, geminiBorderBrush),
+        border = border,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
@@ -795,7 +830,10 @@ private fun NextMiniWarningChip(
 }
 
 @Composable
-private fun NextSuperuserTile(onClick: () -> Unit) {
+private fun NextSuperuserTile(
+    border: BorderStroke?,
+    onClick: () -> Unit
+) {
     val count = getSuperuserCount()
 
     Card(
@@ -803,10 +841,7 @@ private fun NextSuperuserTile(onClick: () -> Unit) {
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(
-            width = 0.75.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-        ),
+        border = border,
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(22.dp))
@@ -862,6 +897,7 @@ private fun NextSuperuserTile(onClick: () -> Unit) {
 @Composable
 private fun NextModuleTile(
     moduleViewModel: ModuleViewModel,
+    border: BorderStroke?,
     onClick: () -> Unit
 ) {
     val count = getModuleCount()
@@ -887,10 +923,7 @@ private fun NextModuleTile(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(
-            width = 0.75.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-        ),
+        border = border,
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(22.dp))
@@ -987,17 +1020,14 @@ private fun NextSpecTile(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
-    accentValue: Boolean = false
+    border: BorderStroke? = null
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(
-            width = 0.75.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-        ),
+        border = border,
         modifier = modifier
     ) {
         Column(
@@ -1022,7 +1052,7 @@ private fun NextSpecTile(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = if (accentValue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1034,17 +1064,15 @@ private fun NextSpecTile(
 private fun NextKernelWideCard(
     kernelRelease: String,
     abiList: String,
-    uidInfo: String? = null
+    uidInfo: String? = null,
+    border: BorderStroke? = null
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(
-            width = 0.75.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-        ),
+        border = border,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -1057,14 +1085,14 @@ private fun NextKernelWideCard(
                 text = stringResource(R.string.home_kernel),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-                color = MaterialTheme.colorScheme.primary
+                letterSpacing = 0.7.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
                 text = kernelRelease,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
@@ -1086,21 +1114,16 @@ private fun NextKernelWideCard(
 }
 
 @Composable
-private fun GeminiSignatureCard(onClick: () -> Unit) {
-    val borderBrush = Brush.linearGradient(
-        colors = listOf(
-            GeminiBlue.copy(alpha = 0.55f),
-            GeminiPurple.copy(alpha = 0.55f),
-            GeminiPink.copy(alpha = 0.55f)
-        )
-    )
-
+private fun GeminiSignatureCard(
+    border: BorderStroke?,
+    onClick: () -> Unit
+) {
     Card(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        border = BorderStroke(1.dp, borderBrush),
+        border = border,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
@@ -1110,41 +1133,31 @@ private fun GeminiSignatureCard(onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             GeminiSparkleIcon(
                 animate = true,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(22.dp)
             )
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "linex Project",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "ThRE Team • Enjoy Your Life...",
+                    text = "Enjoy Your Life...",
                     style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            Icon(
-                imageVector = Icons.Filled.Terminal,
-                contentDescription = "Terminal",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 }
