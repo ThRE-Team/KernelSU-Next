@@ -212,6 +212,12 @@ fun NextHomeScreen(navigator: DestinationsNavigator) {
         }
     }
 
+    var showEnjoyDialog by remember { mutableStateOf(false) }
+
+    if (showEnjoyDialog) {
+        AboutDialog(dismiss = { showEnjoyDialog = false })
+    }
+
     Scaffold(
         topBar = {
             NextHomeTopBar(
@@ -473,17 +479,9 @@ fun NextHomeScreen(navigator: DestinationsNavigator) {
                 )
             }
 
-            // 8. Interactive Footer Signature Card (Opens .Term)
+            // 8. Interactive Footer Signature Card (Opens Info & Custom Layout)
             GeminiSignatureCard(
-                border = cardBorder,
-                onClick = {
-                    try {
-                        val termClass = Class.forName("${context.packageName}.Term")
-                        context.startActivity(Intent(context, termClass))
-                    } catch (_: Exception) {
-                        Toast.makeText(context, "Terminal activity not found", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                onClick = { showEnjoyDialog = true }
             )
 
             Spacer(Modifier.height(4.dp))
@@ -728,7 +726,16 @@ private fun NextHeroStatusCard(
                         }
                     }
 
+                    val context = LocalContext.current
                     Surface(
+                        onClick = {
+                            try {
+                                val termClass = Class.forName("${context.packageName}.Term")
+                                context.startActivity(Intent(context, termClass))
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Terminal activity not found", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         shape = RoundedCornerShape(10.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         border = BorderStroke(
@@ -1135,37 +1142,24 @@ private fun NextKernelWideCard(
 
 @Composable
 private fun GeminiSignatureCard(
-    border: BorderStroke?,
+    border: BorderStroke? = null,
     onClick: () -> Unit
 ) {
-    NextCard(
-        cornerRadius = 18.dp,
-        border = border,
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "linex Project",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Enjoy Your Life...",
-                style = MaterialTheme.typography.labelSmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = "linex Project",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
