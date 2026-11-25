@@ -35,6 +35,7 @@ private val NextGeminiPink = Color(0xFFD96570)
 fun isNextHomeStyle(): Boolean {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val activity = context as? com.rifsxd.ksunext.ui.MainActivity
     var homeStyle by remember {
         mutableStateOf(prefs.getString("home_style", "default") ?: "default")
     }
@@ -47,7 +48,8 @@ fun isNextHomeStyle(): Boolean {
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    return homeStyle == "next"
+    val currentStyle = activity?.homeStyleState?.value ?: homeStyle
+    return currentStyle == "next_manager"
 }
 
 @Composable
