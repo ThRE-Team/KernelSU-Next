@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
@@ -218,7 +220,7 @@ fun NextMetaModuleScreen(navigator: DestinationsNavigator) {
 
     Scaffold(
         topBar = {
-            NextTopBar(
+            NextMetaModuleTopBar(
                 title = stringResource(R.string.meta_module_screen),
                 pillBorder = cardBorder,
                 onBack = dropUnlessResumed { navigator.popBackStack() },
@@ -546,4 +548,42 @@ private fun NextMetaModuleCard(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NextMetaModuleTopBar(
+    title: String,
+    pillBorder: BorderStroke?,
+    onBack: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior? = null
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+        },
+        navigationIcon = {
+            Surface(
+                onClick = onBack,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = pillBorder,
+                modifier = Modifier.padding(start = 8.dp).size(38.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        },
+        windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        scrollBehavior = scrollBehavior
+    )
 }

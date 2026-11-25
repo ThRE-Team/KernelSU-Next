@@ -25,6 +25,9 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -132,7 +135,7 @@ fun NextInstallScreen(navigator: DestinationsNavigator) {
 
     Scaffold(
         topBar = {
-            NextTopBar(
+            NextInstallTopBar(
                 title = stringResource(R.string.install),
                 pillBorder = cardBorder,
                 onBack = dropUnlessResumed { navigator.popBackStack() },
@@ -394,4 +397,44 @@ private fun NextSelectInstallMethod(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NextInstallTopBar(
+    title: String,
+    pillBorder: BorderStroke?,
+    onBack: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+    scrollBehavior: TopAppBarScrollBehavior? = null
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+        },
+        navigationIcon = {
+            Surface(
+                onClick = onBack,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = pillBorder,
+                modifier = Modifier.padding(start = 8.dp).size(38.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        },
+        actions = actions,
+        windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        scrollBehavior = scrollBehavior
+    )
 }
