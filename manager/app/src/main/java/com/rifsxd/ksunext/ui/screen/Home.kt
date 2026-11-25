@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
@@ -51,6 +52,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
@@ -71,7 +75,6 @@ import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDe
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.rifsxd.ksunext.*
 import com.rifsxd.ksunext.R
-import com.rifsxd.ksunext.ui.MainActivity
 import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
 import com.rifsxd.ksunext.ui.theme.ORANGE
 import com.rifsxd.ksunext.ui.util.*
@@ -80,9 +83,9 @@ import com.rifsxd.ksunext.ui.util.restartActivity
 import com.rifsxd.ksunext.ui.util.module.LatestVersionInfo
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
 import com.rifsxd.ksunext.ui.LocalNavBarEnabled
-import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.LocalScrollState 
 import com.rifsxd.ksunext.ui.screen.BottomBarDestination
-import com.rifsxd.ksunext.ui.trackScroll
+import com.rifsxd.ksunext.ui.trackScroll 
 import com.rifsxd.ksunext.ui.rememberScrollConnection
 import java.util.*
 import kotlinx.coroutines.Dispatchers
@@ -93,18 +96,6 @@ import kotlinx.coroutines.withContext
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
-    val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val activity = context as? MainActivity
-    val homeStyle = activity?.homeStyleState?.value
-        ?: prefs.getString("home_style", "default")
-        ?: "default"
-
-    if (homeStyle == "next_manager") {
-        NextScreen(navigator = navigator)
-        return
-    }
-
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -115,15 +106,19 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelUAPIVersion = if (isManager) Natives.kernelUAPIVersion else null
     val managerUAPIVersion = Natives.managerUAPIVersion
 
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
-
+    
+    // Get scroll state for bottom bar tracking
     val bottomBarScrollState = LocalScrollState.current
 
     val scrollState = LocalScrollState.current
     val navBarEnabled = LocalNavBarEnabled.current
     val isNavBarHidden = (scrollState?.isScrollingDown?.value ?: false) || (navBarEnabled?.value == false)
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp
-
+    
+    // Create scroll connection for bottom bar
     val bottomBarScrollConnection = if (bottomBarScrollState != null) {
         rememberScrollConnection(
             isScrollingDown = bottomBarScrollState.isScrollingDown,
@@ -159,6 +154,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                // Chain scroll connections - bottom bar tracking first, then topbar behavior
                 .let { modifier ->
                     if (bottomBarScrollConnection != null) {
                         modifier
@@ -187,6 +183,9 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             ) {
                 navigator.navigate(InstallScreenDestination)
             }
+
+            val homeDestination = BottomBarDestination.entries.firstOrNull()
+            val startRoute = homeDestination?.direction?.route
 
             if (fullFeatured) {
                 Row(
@@ -229,6 +228,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             val requiresNewKernel = isManager && kernelUAPIVersion != null && managerUAPIVersion > kernelUAPIVersion
             val requiresNewManager = isManager && kernelUAPIVersion != null && managerUAPIVersion < kernelUAPIVersion
 
+            // Jailbreak mode runs on locked bootloaders, so flashing a boot image would brick the device.
             val canInstallKernelUpdate = lkmMode == true && !Natives.isLateLoadMode
 
             if (requiresNewKernel) {
@@ -338,12 +338,13 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
         }
     }
 
+    // State machine: 0 = nothing, 1 = show "+ Update!", 2 = show "+ X"
     var step by remember { mutableStateOf(0) }
 
     LaunchedEffect(moduleUpdateCount) {
         if (moduleUpdateCount > 0) {
             step = 1
-            delay(1200)
+            delay(1200) // show "+ Update!" for a moment
             step = 2
         } else {
             step = 0
@@ -388,6 +389,7 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
                         Spacer(Modifier.width(6.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Keep the "|" static
                             Text(
                                 text = "|",
                                 style = MaterialTheme.typography.titleMedium,
@@ -396,6 +398,7 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
 
                             Spacer(Modifier.width(4.dp))
 
+                            // Animate only the right-side text
                             AnimatedContent(
                                 targetState = step,
                                 transitionSpec = {
@@ -431,9 +434,9 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
 fun UpdateCard() {
     val context = LocalContext.current
     val latestVersionInfo = LatestVersionInfo()
-
+    
     var preferSpoofed by remember { mutableStateOf(false) }
-
+    
     val newVersion by produceState(initialValue = latestVersionInfo, key1 = preferSpoofed) {
         value = withContext(Dispatchers.IO) {
             checkNewVersion(preferSpoofed)
@@ -504,16 +507,16 @@ fun UpdateCard() {
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-
+                
                 Spacer(modifier = Modifier.height(20.dp))
-
+                
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = stringResource(id = R.string.select_build_type),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
-
+                    
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -574,7 +577,7 @@ fun UpdateCard() {
                                 }
                             }
                         }
-
+                        
                         if (preferSpoofed) {
                             FilledTonalButton(
                                 onClick = { preferSpoofed = true },
@@ -640,6 +643,19 @@ fun RebootDropdownItem(@StringRes id: Int, reason: String = "") {
     })
 }
 
+// @Composable
+// fun getSeasonalIcon(): ImageVector {
+//     val month = Calendar.getInstance().get(Calendar.MONTH) // 0-11 for January-December
+//     return when (month) {
+//         Calendar.DECEMBER, Calendar.JANUARY, Calendar.FEBRUARY -> Icons.Filled.AcUnit // Winter
+//         Calendar.MARCH, Calendar.APRIL, Calendar.MAY -> Icons.Filled.Spa // Spring
+//         Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> Icons.Filled.WbSunny // Summer
+//         Calendar.SEPTEMBER, Calendar.OCTOBER, Calendar.NOVEMBER -> Icons.Filled.Forest // Fall
+//         else -> Icons.Filled.Whatshot // Fallback icon
+//     }
+// }
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(
@@ -664,7 +680,7 @@ private fun TopBar(
     )
 
     val moduleViewModel: ModuleViewModel = viewModel()
-
+    
     val webUILauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { }
@@ -753,6 +769,7 @@ private fun TopBar(
         scrollBehavior = scrollBehavior
     )
 }
+
 
 @Composable
 private fun StatusCard(
@@ -981,7 +998,7 @@ fun WarningCard(
     }
 }
 
-internal data class HomeInfoSnapshot(
+private data class HomeInfoSnapshot(
     val managerVersion: Pair<String, Long> = "" to 0L,
     val managerUAPIVersion: Int = 0,
     val managerAppId: Int = 0,
@@ -999,7 +1016,7 @@ internal data class HomeInfoSnapshot(
     val selinuxStatusRes: Int = R.string.selinux_status_unknown,
 )
 
-internal fun buildHomeInfoSnapshot(
+private fun buildHomeInfoSnapshot(
     context: Context,
     ksuVersion: Int?,
     moduleList: List<ModuleViewModel.ModuleInfo>,
@@ -1223,7 +1240,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
                     ) {
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowDown,
-                            contentDescription = null,
+                            contentDescription = if (expanded) null else null,
                             modifier = Modifier.graphicsLayer {
                                 rotationZ = rotationAngle
                             }
@@ -1320,6 +1337,7 @@ private fun ContributorRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Avatar + name/role
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -1329,6 +1347,7 @@ private fun ContributorRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Avatar
             Box(
                 modifier = Modifier
                     .size(38.dp)
@@ -1368,6 +1387,7 @@ private fun ContributorRow(
                 }
             }
 
+            // Name + role
             Column {
                 Text(
                     text = contributor.name?.takeIf { it.isNotBlank() }
@@ -1456,7 +1476,7 @@ fun IssueReportCard() {
 }
 
 @SuppressLint("RestrictedApi")
-fun handleDynamicShortcuts(context: Context, moduleConfigs: List<Pair<ModuleViewModel.ModuleInfo, Int>>) {
+fun handleDynamicShortcuts(context: Context, moduleConfigs: List <Pair<ModuleViewModel.ModuleInfo, Int>>) {
     ShortcutManagerCompat.removeAllDynamicShortcuts(context)
 
     moduleConfigs.forEach { (module, iconRes) ->
