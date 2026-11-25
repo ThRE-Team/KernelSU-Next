@@ -22,7 +22,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -81,7 +80,6 @@ import com.rifsxd.ksunext.ui.util.isSuCompatDisabled
 import com.rifsxd.ksunext.ui.util.restartActivity
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -124,7 +122,6 @@ fun NextScreen(navigator: DestinationsNavigator) {
 
     val moduleViewModel: ModuleViewModel = viewModel()
     var homeInfo by remember { mutableStateOf(HomeInfoSnapshot()) }
-    val socName = remember { getSocName() }
 
     LaunchedEffect(ksuVersion, moduleViewModel.moduleList) {
         homeInfo = withContext(Dispatchers.IO) {
@@ -291,40 +288,14 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 }
             }
 
-            // 4. System Specifications Bento Grid
-            Text(
-                text = "SYSTEM SPECIFICATIONS",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            // 4. Full-Width Kernel & ABI Card (Moved here)
+            NextKernelWideCard(
+                kernelRelease = "${homeInfo.unameRelease} (${homeInfo.unameMachine})",
+                abiList = Build.SUPPORTED_ABIS.joinToString(", "),
+                uidInfo = if (developerOptionsEnabled) "Manager UID: ${homeInfo.managerAppId}" else null
             )
 
-            // Row 1: Processor & Device
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                NextSpecTile(
-                    label = "PROCESSOR",
-                    value = socName,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                )
-                NextSpecTile(
-                    label = "DEVICE",
-                    value = "${Build.MODEL} (${Build.DEVICE})",
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                )
-            }
-
-            // Row 2: Hook Mode & Metamodule (when KSU active)
+            // 5. Hook Mode & Metamodule (when KSU active)
             if (ksuVersion != null) {
                 val metaInfo = homeInfo.metaInfo
                 val metaText = when {
@@ -345,14 +316,14 @@ fun NextScreen(navigator: DestinationsNavigator) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     NextSpecTile(
-                        label = stringResource(R.string.hook_mode).uppercase(Locale.getDefault()),
+                        label = stringResource(R.string.hook_mode),
                         value = homeInfo.hookMode ?: stringResource(R.string.unavailable),
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                     )
                     NextSpecTile(
-                        label = stringResource(R.string.home_metamodule_status).uppercase(Locale.getDefault()),
+                        label = stringResource(R.string.home_metamodule_status),
                         value = metaText,
                         modifier = Modifier
                             .weight(1f)
@@ -360,7 +331,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                     )
                 }
 
-                // Row 3: SuSFS & Zygisk (when supported/enabled)
+                // 6. SuSFS & Zygisk (when supported/enabled)
                 if (homeInfo.suSFS == "Supported" || homeInfo.zygiskEnabled) {
                     Row(
                         modifier = Modifier
@@ -370,7 +341,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                     ) {
                         if (homeInfo.suSFS == "Supported") {
                             NextSpecTile(
-                                label = stringResource(R.string.home_susfs_version).uppercase(Locale.getDefault()),
+                                label = stringResource(R.string.home_susfs_version),
                                 value = "${stringResource(R.string.supported)} | ${homeInfo.suSFSVersion ?: stringResource(R.string.unavailable)} (${homeInfo.suSFSVariant ?: stringResource(R.string.unavailable)})",
                                 accentValue = true,
                                 modifier = Modifier
@@ -386,7 +357,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                                 stringResource(R.string.enabled)
                             }
                             NextSpecTile(
-                                label = stringResource(R.string.zygisk_status).uppercase(Locale.getDefault()),
+                                label = stringResource(R.string.zygisk_status),
                                 value = zygiskText,
                                 modifier = Modifier
                                     .weight(1f)
@@ -397,7 +368,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 }
             }
 
-            // Row 4: Android Version & SELinux / Seccomp
+            // 7. Android Version & SELinux / Seccomp
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -405,14 +376,14 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 NextSpecTile(
-                    label = stringResource(R.string.home_android).uppercase(Locale.getDefault()),
+                    label = stringResource(R.string.home_android),
                     value = "Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
                 )
                 NextSpecTile(
-                    label = "${stringResource(R.string.home_selinux_status)} • SECCOMP".uppercase(Locale.getDefault()),
+                    label = "SELinux • Seccomp",
                     value = "${stringResource(homeInfo.selinuxStatusRes)} • ${homeInfo.seccompStatus}",
                     modifier = Modifier
                         .weight(1f)
@@ -420,14 +391,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                 )
             }
 
-            // Row 5: Full-Width Kernel & ABI Card
-            NextKernelWideCard(
-                kernelRelease = "${homeInfo.unameRelease} (${homeInfo.unameMachine})",
-                abiList = Build.SUPPORTED_ABIS.joinToString(", "),
-                uidInfo = if (developerOptionsEnabled) "Manager UID: ${homeInfo.managerAppId}" else null
-            )
-
-            // 5. Interactive Footer Signature Card (Opens .Term)
+            // 8. Interactive Footer Signature Card (Opens .Term)
             GeminiSignatureCard(
                 onClick = {
                     try {
@@ -863,7 +827,7 @@ private fun NextSuperuserTile(onClick: () -> Unit) {
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = stringResource(R.string.superuser).uppercase(Locale.getDefault()),
+                    text = stringResource(R.string.superuser),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.8.sp,
@@ -947,7 +911,7 @@ private fun NextModuleTile(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = stringResource(R.string.module).uppercase(Locale.getDefault()),
+                    text = stringResource(R.string.module),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.8.sp,
@@ -1090,7 +1054,7 @@ private fun NextKernelWideCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = stringResource(R.string.home_kernel).uppercase(Locale.getDefault()),
+                text = stringResource(R.string.home_kernel),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.8.sp,
@@ -1239,19 +1203,4 @@ private fun GeminiSparkleIcon(
             drawPath(path = starPath, brush = gradient)
         }
     }
-}
-
-private fun getSocName(): String {
-    val props = listOf("ro.soc.model", "ro.board.platform", "ro.hardware.chipname")
-    for (prop in props) {
-        val value = runCatching {
-            val cls = Class.forName("android.os.SystemProperties")
-            val get = cls.getMethod("get", String::class.java)
-            get.invoke(null, prop) as? String
-        }.getOrNull()?.trim()
-        if (!value.isNullOrEmpty() && !value.equals("unknown", ignoreCase = true)) {
-            return value.uppercase(Locale.ROOT)
-        }
-    }
-    return Build.HARDWARE.uppercase(Locale.ROOT)
 }
