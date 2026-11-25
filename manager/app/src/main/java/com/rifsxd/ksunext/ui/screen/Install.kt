@@ -67,6 +67,10 @@ import java.util.Locale
 @Composable
 fun InstallScreen(navigator: DestinationsNavigator) {
 
+    if (isNextHomeStyle()) {
+        NextInstallScreen(navigator)
+        return
+    }
     var installMethod by remember {
         mutableStateOf<InstallMethod?>(null)
     }

@@ -78,6 +78,8 @@ import com.rifsxd.ksunext.ui.LocalScrollState
 import com.rifsxd.ksunext.ui.LocalNavBarEnabled
 import com.rifsxd.ksunext.ui.rememberScrollConnection
 import com.rifsxd.ksunext.ui.component.SearchAppBar
+import com.rifsxd.ksunext.ui.screen.NextSulogScreen
+import com.rifsxd.ksunext.ui.screen.isNextHomeStyle
 import com.rifsxd.ksunext.ui.util.SulogEntry
 import com.rifsxd.ksunext.ui.util.SulogEventFilter
 import com.rifsxd.ksunext.ui.util.SulogEventType
@@ -489,6 +491,10 @@ private fun SulogDetailDialog(
 @Destination<RootGraph>
 @Composable
 fun SulogScreen(navigator: DestinationsNavigator) {
+    if (isNextHomeStyle()) {
+        NextSulogScreen(navigator)
+        return
+    }
     val viewModel = viewModel<SulogViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 

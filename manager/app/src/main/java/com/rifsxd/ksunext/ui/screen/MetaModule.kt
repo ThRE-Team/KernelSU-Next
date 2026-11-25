@@ -90,6 +90,10 @@ sealed class MetaModuleState {
 @Destination<RootGraph>
 @Composable
 fun MetaModuleScreen(navigator: DestinationsNavigator) {
+    if (isNextHomeStyle()) {
+        NextMetaModuleScreen(navigator)
+        return
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     // Bottom bar scroll tracking
     val bottomBarScrollState = LocalScrollState.current
