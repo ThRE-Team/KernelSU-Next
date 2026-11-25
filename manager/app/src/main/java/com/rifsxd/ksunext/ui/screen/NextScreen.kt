@@ -412,7 +412,7 @@ fun NextScreen(navigator: DestinationsNavigator) {
                         .fillMaxHeight()
                 )
                 NextSpecTile(
-                    label = "${stringResource(R.string.home_selinux_status)} • ${stringResource(R.string.home_seccomp_status)}".uppercase(Locale.getDefault()),
+                    label = "${stringResource(R.string.home_selinux_status)} • SECCOMP".uppercase(Locale.getDefault()),
                     value = "${stringResource(homeInfo.selinuxStatusRes)} • ${homeInfo.seccompStatus}",
                     modifier = Modifier
                         .weight(1f)
@@ -494,7 +494,7 @@ private fun NextTopBar(
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = stringResource(R.string.app_name),
+                        text = "Next Manager",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -1157,13 +1157,13 @@ private fun GeminiSignatureCard(onClick: () -> Unit) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Co-Engineered with Google Gemini",
+                    text = "linex Project",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "ThRE Team • Crafting with Cracking...",
+                    text = "ThRE Team • Enjoy Your Life...",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
