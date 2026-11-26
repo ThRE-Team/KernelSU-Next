@@ -124,6 +124,10 @@ private fun loadNonFreeEnabled(context: Context): Boolean {
 @Destination<RootGraph>
 @Composable
 fun ModuleRepoScreen(navigator: DestinationsNavigator) {
+    if (isNextHomeStyle()) {
+        NextModuleRepoScreen(navigator)
+        return
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val bottomBarScrollState = LocalScrollState.current
     val bottomBarScrollConnection = if (bottomBarScrollState != null) {

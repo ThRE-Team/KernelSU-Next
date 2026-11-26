@@ -58,6 +58,10 @@ import com.rifsxd.ksunext.ui.util.LocaleHelper
 @Destination<RootGraph>
 @Composable
 fun CustomizationScreen(navigator: DestinationsNavigator) {
+    if (isNextHomeStyle()) {
+        NextCustomizationScreen(navigator)
+        return
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     // Bottom bar scroll tracking
     val bottomBarScrollState = LocalScrollState.current

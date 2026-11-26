@@ -78,6 +78,10 @@ import java.time.format.DateTimeFormatter
 @Destination<RootGraph>
 @Composable
 fun SettingScreen(navigator: DestinationsNavigator) {
+    if (isNextHomeStyle()) {
+        NextSettingScreen(navigator)
+        return
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
 

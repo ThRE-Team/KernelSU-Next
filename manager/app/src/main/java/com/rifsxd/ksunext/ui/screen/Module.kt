@@ -93,6 +93,10 @@ import kotlinx.coroutines.withContext
 @Destination<RootGraph>
 @Composable
 fun ModuleScreen(navigator: DestinationsNavigator) {
+    if (isNextHomeStyle()) {
+        NextModuleScreen(navigator)
+        return
+    }
     val viewModel = viewModel<ModuleViewModel>()
     val context = LocalContext.current
     val snackBarHost = LocalSnackbarHost.current

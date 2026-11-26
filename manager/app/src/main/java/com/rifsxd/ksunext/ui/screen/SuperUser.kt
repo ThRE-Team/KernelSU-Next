@@ -53,6 +53,10 @@ import kotlinx.coroutines.launch
 @Destination<RootGraph>
 @Composable
 fun SuperUserScreen(navigator: DestinationsNavigator) {
+    if (isNextHomeStyle()) {
+        NextSuperUserScreen(navigator)
+        return
+    }
     val viewModel = viewModel<SuperUserViewModel>()
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
