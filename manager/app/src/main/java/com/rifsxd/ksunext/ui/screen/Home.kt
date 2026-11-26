@@ -11,6 +11,8 @@ import androidx.compose.ui.layout.ContentScale
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import androidx.compose.foundation.combinedClickable
 import android.content.pm.ShortcutInfo
 import android.os.Build
 import android.os.PowerManager
@@ -714,7 +716,7 @@ private fun TopBar(
                         }
                 )
                 Text(
-                    text = stringResource(R.string.app_name),
+                    text = stringResource(R.string.aaa_app_name),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black
                 )
@@ -775,6 +777,7 @@ private fun TopBar(
 }
 
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun StatusCard(
     kernelVersionParam: KernelVersion,
@@ -786,6 +789,11 @@ private fun StatusCard(
     onClickInstall: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    var showAboutDialog by remember { mutableStateOf(false) }
+
+    if (showAboutDialog) {
+        AboutDialog(dismiss = { showAboutDialog = false })
+    }
 
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(containerColor = run {
@@ -797,11 +805,31 @@ private fun StatusCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    if (ksuVersionParam == null) {
-                        onClickInstall()
+                .combinedClickable(
+                    onDoubleClick = {
+                        context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("home_style", "next_manager")
+                            .apply()
+                        Toast.makeText(context, "Next Manager Layout", Toast.LENGTH_SHORT).show()
+                    },
+                    onLongClick = {
+                        showAboutDialog = true
+                    },
+                    onClick = {
+                        if (ksuVersionParam != null) {
+                            val targetPkg = context.packageName
+                            val term = Intent().apply {
+                                setClassName(targetPkg, "$targetPkg.Term")
+                                addFlags(FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(term)
+                        }
+                        if (ksuVersionParam == null) {
+                            onClickInstall()
+                        }
                     }
-                }
+                )
                 .padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
                 ksuVersionParam != null -> {
@@ -1434,8 +1462,8 @@ private fun ContributorRow(
 @Composable
 fun IssueReportCard() {
     val uriHandler = LocalUriHandler.current
-    val githubIssueUrl = stringResource(R.string.issue_report_github_link)
-    val telegramUrl = stringResource(R.string.issue_report_telegram_link)
+    val githubIssueUrl = stringResource(R.string.aaa_issue_report_github_link)
+    val telegramUrl = stringResource(R.string.aaa_issue_report_telegram_link)
 
     Card {
         Row(
